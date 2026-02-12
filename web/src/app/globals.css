@@ -1,8 +1,48 @@
 @import "tailwindcss";
 
+/* === HIVE NEON-NOIR DESIGN SYSTEM === */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core palette */
+  --hive-bg-primary: #0a0a0f;
+  --hive-bg-secondary: #12121a;
+  --hive-bg-card: #1a1a2e;
+  --hive-bg-card-hover: #222240;
+  --hive-bg-elevated: #16213e;
+
+  /* Text */
+  --hive-text-primary: #e8e8f0;
+  --hive-text-secondary: #9898b0;
+  --hive-text-muted: #5a5a7a;
+
+  /* Accents */
+  --hive-accent-primary: #00d4ff;
+  --hive-accent-secondary: #7c3aed;
+  --hive-accent-success: #10b981;
+  --hive-accent-warning: #f59e0b;
+  --hive-accent-danger: #ef4444;
+  --hive-accent-fire: #f97316;
+
+  /* Gradients */
+  --hive-gradient-primary: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
+  --hive-gradient-card: linear-gradient(145deg, rgba(26,26,46,0.8), rgba(22,33,62,0.4));
+  --hive-gradient-hero: linear-gradient(180deg, #0a0a0f 0%, #16213e 50%, #0a0a0f 100%);
+
+  /* Borders */
+  --hive-border: rgba(255,255,255,0.06);
+  --hive-border-accent: rgba(0,212,255,0.3);
+
+  /* Glow */
+  --hive-glow-cyan: 0 0 20px rgba(0,212,255,0.15), 0 0 60px rgba(0,212,255,0.05);
+  --hive-glow-purple: 0 0 20px rgba(124,58,237,0.15), 0 0 60px rgba(124,58,237,0.05);
+
+  /* Glass */
+  --hive-glass-bg: rgba(26,26,46,0.6);
+  --hive-glass-border: rgba(255,255,255,0.08);
+
+  /* Font */
+  --background: var(--hive-bg-primary);
+  --foreground: var(--hive-text-primary);
 }
 
 @theme inline {
@@ -10,17 +50,91 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Custom colors for Tailwind */
+  --color-hive-bg: var(--hive-bg-primary);
+  --color-hive-card: var(--hive-bg-card);
+  --color-hive-elevated: var(--hive-bg-elevated);
+  --color-hive-accent: var(--hive-accent-primary);
+  --color-hive-purple: var(--hive-accent-secondary);
+  --color-hive-success: var(--hive-accent-success);
+  --color-hive-warning: var(--hive-accent-warning);
+  --color-hive-fire: var(--hive-accent-fire);
+  --color-hive-text: var(--hive-text-primary);
+  --color-hive-text-secondary: var(--hive-text-secondary);
+  --color-hive-text-muted: var(--hive-text-muted);
+  --color-hive-border: var(--hive-border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* === BASE STYLES === */
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--hive-bg-primary);
+  color: var(--hive-text-primary);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--hive-bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hive-bg-card);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--hive-accent-primary);
+}
+
+/* === GLASS CARD === */
+.glass-card {
+  background: var(--hive-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--hive-glass-border);
+  border-radius: 16px;
+}
+
+/* === NEON GLOW === */
+.glow-cyan {
+  box-shadow: var(--hive-glow-cyan);
+}
+.glow-purple {
+  box-shadow: var(--hive-glow-purple);
+}
+
+/* === GRADIENT TEXT === */
+.gradient-text {
+  background: var(--hive-gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* === PULSE ANIMATION === */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* === STREAK HEATMAP CELL === */
+.heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.5);
 }
