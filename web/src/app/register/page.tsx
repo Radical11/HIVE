@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { Zap, Mail, Lock, User, ArrowRight, Github } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { signInWithGoogle, signInWithGithub } from "@/lib/firebase";
 
 function GoogleIcon({ className }: { className?: string }) {
     return (
@@ -21,6 +22,35 @@ export default function RegisterPage() {
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const router = useRouter();
+
+    async function handleGoogleSignUp() {
+        setLoading(true);
+        setError("");
+        try {
+            await signInWithGoogle();
+            router.push("/feed");
+        } catch (err: any) {
+            setError(err.message || "Google sign-up failed");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleGithubSignUp() {
+        setLoading(true);
+        setError("");
+        try {
+            await signInWithGithub();
+            router.push("/feed");
+        } catch (err: any) {
+            setError(err.message || "GitHub sign-up failed");
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
         <div
@@ -57,6 +87,12 @@ export default function RegisterPage() {
                     Create your engineering identity. Your journey starts now.
                 </p>
 
+                {error && (
+                    <div className="mb-4 px-4 py-2 rounded-lg text-xs" style={{ background: "rgba(239,68,68,0.1)", color: "var(--hive-accent-danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        {error}
+                    </div>
+                )}
+
                 <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
                     {/* Username */}
                     <div>
@@ -65,10 +101,7 @@ export default function RegisterPage() {
                         </label>
                         <div
                             className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                            style={{
-                                background: "rgba(255,255,255,0.03)",
-                                border: "1px solid var(--hive-border)",
-                            }}
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--hive-border)" }}
                         >
                             <User className="w-4 h-4" style={{ color: "var(--hive-text-muted)" }} />
                             <input
@@ -89,10 +122,7 @@ export default function RegisterPage() {
                         </label>
                         <div
                             className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                            style={{
-                                background: "rgba(255,255,255,0.03)",
-                                border: "1px solid var(--hive-border)",
-                            }}
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--hive-border)" }}
                         >
                             <Mail className="w-4 h-4" style={{ color: "var(--hive-text-muted)" }} />
                             <input
@@ -113,10 +143,7 @@ export default function RegisterPage() {
                         </label>
                         <div
                             className="flex items-center gap-3 px-4 py-3 rounded-xl"
-                            style={{
-                                background: "rgba(255,255,255,0.03)",
-                                border: "1px solid var(--hive-border)",
-                            }}
+                            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--hive-border)" }}
                         >
                             <Lock className="w-4 h-4" style={{ color: "var(--hive-text-muted)" }} />
                             <input
@@ -142,11 +169,7 @@ export default function RegisterPage() {
                                         type="button"
                                         key={track}
                                         className="px-3 py-2 rounded-lg text-xs font-medium transition-all hover:scale-[1.02]"
-                                        style={{
-                                            background: "rgba(255,255,255,0.03)",
-                                            border: "1px solid var(--hive-border)",
-                                            color: "var(--hive-text-secondary)",
-                                        }}
+                                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--hive-border)", color: "var(--hive-text-secondary)" }}
                                     >
                                         {track}
                                     </button>
@@ -158,10 +181,7 @@ export default function RegisterPage() {
                     <button
                         type="submit"
                         className="w-full py-3 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                        style={{
-                            background: "var(--hive-gradient-primary)",
-                            boxShadow: "var(--hive-glow-cyan)",
-                        }}
+                        style={{ background: "var(--hive-gradient-primary)", boxShadow: "var(--hive-glow-cyan)" }}
                     >
                         Create Profile <ArrowRight className="w-4 h-4" />
                     </button>
@@ -175,13 +195,10 @@ export default function RegisterPage() {
                     {/* Google OAuth */}
                     <button
                         type="button"
-                        onClick={() => signIn("google", { callbackUrl: "/feed" })}
-                        className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                        style={{
-                            background: "rgba(255,255,255,0.08)",
-                            border: "1px solid var(--hive-border)",
-                            color: "var(--hive-text-primary)",
-                        }}
+                        disabled={loading}
+                        onClick={handleGoogleSignUp}
+                        className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50"
+                        style={{ background: "rgba(255,255,255,0.08)", border: "1px solid var(--hive-border)", color: "var(--hive-text-primary)" }}
                     >
                         <GoogleIcon className="w-4 h-4" /> Sign up with Google
                     </button>
@@ -189,13 +206,10 @@ export default function RegisterPage() {
                     {/* GitHub OAuth */}
                     <button
                         type="button"
-                        onClick={() => signIn("github", { callbackUrl: "/feed" })}
-                        className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
-                        style={{
-                            background: "rgba(255,255,255,0.05)",
-                            border: "1px solid var(--hive-border)",
-                            color: "var(--hive-text-primary)",
-                        }}
+                        disabled={loading}
+                        onClick={handleGithubSignUp}
+                        className="w-full py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50"
+                        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid var(--hive-border)", color: "var(--hive-text-primary)" }}
                     >
                         <Github className="w-4 h-4" /> Sign up with GitHub
                     </button>
