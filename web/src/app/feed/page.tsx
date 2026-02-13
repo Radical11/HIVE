@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Zap,
     Home,
@@ -21,48 +22,122 @@ import {
     TrendingUp,
     Settings,
     LogIn,
+    Github,
+    Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiGet, apiPost } from "@/lib/api";
+
+/* === TYPES === */
+interface PostAuthor {
+    id: string;
+    username: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    profile: {
+        headline: string;
+        avatar_url: string | null;
+        bio?: string;
+    };
+}
+
+interface Post {
+    id: string;
+    author: PostAuthor;
+    content: string;
+    code_snippet: string | null;
+    image_url: string | null;
+    type: "MANUAL" | "GITHUB_COMMIT" | "CODEFORCES_SOLVE" | "MILESTONE";
+    created_at: string;
+    reactions: Array<{ id: number; user: string; type: "RESPECT" | "FIRE" | "BUG" }>;
+    comments: any[];
+    reaction_counts: { RESPECT?: number; FIRE?: number; BUG?: number };
+    comment_count: number;
+}
+
+interface UserStats {
+    streak: number;
+    elo: number;
+    xp: number;
+    github_username?: string;
+}
+
+interface GitHubActivity {
+    commits: number;
+    prs: number;
+    stars: number;
+}
 
 /* === MOCK DATA === */
-const posts = [
+const mockPosts: Post[] = [
     {
-        id: "1",
-        author: { username: "sarah_dev", headline: "Full Stack @ Stripe" },
+        id: "mock-1",
+        author: {
+            id: "1",
+            username: "sarah_dev",
+            email: "sarah@example.com",
+            first_name: "Sarah",
+            last_name: "Dev",
+            profile: { headline: "Full Stack @ Stripe", avatar_url: null },
+        },
         type: "GITHUB_COMMIT",
-        content: "Just shipped a major refactor of our payment processing pipeline. Reduced latency by 40% using edge functions 🚀",
-        codeSnippet: `// Before: 240ms avg response
+        content: "Just shipped a major refactor of our payment processing pipeline. Reduced latency by 40% using edge functions",
+        code_snippet: `// Before: 240ms avg response
 const result = await processPayment(data);
 
-// After: 145ms avg response  
+// After: 145ms avg response
 const result = await edge.processPayment(data, {
   region: 'auto',
   cache: 'aggressive'
 });`,
-        reactions: { respect: 42, fire: 18, bug: 2 },
-        comments: 7,
-        timeAgo: "2h ago",
+        image_url: null,
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        reactions: [],
+        comments: [],
+        reaction_counts: { RESPECT: 42, FIRE: 18, BUG: 2 },
+        comment_count: 7,
     },
     {
-        id: "2",
-        author: { username: "algo_master", headline: "CP Specialist | 2400 CF" },
+        id: "mock-2",
+        author: {
+            id: "2",
+            username: "algo_master",
+            email: "algo@example.com",
+            first_name: "Algo",
+            last_name: "Master",
+            profile: { headline: "CP Specialist | 2400 CF", avatar_url: null },
+        },
         type: "CODEFORCES_SOLVE",
-        content: "Cracked Codeforces Round #917 Div. 1 E (Hard) - Tree DP with Heavy-Light trick. Used binary lifting + segment tree combo. Took me 3 attempts but the solution is clean 💪",
-        codeSnippet: null,
-        reactions: { respect: 89, fire: 34, bug: 0 },
-        comments: 12,
-        timeAgo: "4h ago",
+        content: "Cracked Codeforces Round #917 Div. 1 E (Hard) - Tree DP with Heavy-Light trick. Used binary lifting + segment tree combo. Took me 3 attempts but the solution is clean",
+        code_snippet: null,
+        image_url: null,
+        created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+        reactions: [],
+        comments: [],
+        reaction_counts: { RESPECT: 89, FIRE: 34, BUG: 0 },
+        comment_count: 12,
     },
     {
-        id: "3",
-        author: { username: "cyber_ghost", headline: "Security Researcher" },
+        id: "mock-3",
+        author: {
+            id: "3",
+            username: "cyber_ghost",
+            email: "cyber@example.com",
+            first_name: "Cyber",
+            last_name: "Ghost",
+            profile: { headline: "Security Researcher", avatar_url: null },
+        },
         type: "MILESTONE",
-        content: "🏆 Just earned my OSCP certification after 4 months of grinding. The exam was 24 hours of pure adrenaline. Never giving up paid off.",
-        codeSnippet: null,
-        reactions: { respect: 234, fire: 89, bug: 1 },
-        comments: 31,
-        timeAgo: "6h ago",
+        content: "Just earned my OSCP certification after 4 months of grinding. The exam was 24 hours of pure adrenaline. Never giving up paid off.",
+        code_snippet: null,
+        image_url: null,
+        created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+        reactions: [],
+        comments: [],
+        reaction_counts: { RESPECT: 234, FIRE: 89, BUG: 1 },
+        comment_count: 31,
     },
 ];
 
@@ -93,6 +168,19 @@ const typeLabels: Record<string, string> = {
     MILESTONE: "Milestone",
     MANUAL: "Post",
 };
+
+/* === UTILITIES === */
+function getTimeAgo(timestamp: string): string {
+    const now = Date.now();
+    const diff = now - new Date(timestamp).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+}
 
 /* === SIDEBAR NAV === */
 function Sidebar() {
@@ -184,11 +272,419 @@ function Sidebar() {
     );
 }
 
+/* === COMPOSE BOX === */
+function ComposeBox({ onPostCreated }: { onPostCreated: () => void }) {
+    const { user } = useAuth();
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [content, setContent] = useState("");
+    const [codeSnippet, setCodeSnippet] = useState("");
+    const [postType, setPostType] = useState<"MANUAL" | "MILESTONE">("MANUAL");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const displayName = user?.displayName || user?.email?.split("@")[0] || "Builder";
+    const avatarLetter = displayName[0]?.toUpperCase() || "?";
+
+    const handleSubmit = async () => {
+        if (!content.trim() && !codeSnippet.trim()) return;
+
+        setIsSubmitting(true);
+        try {
+            await apiPost("/api/feed/", {
+                content: content.trim(),
+                code_snippet: codeSnippet.trim() || null,
+                type: postType,
+            });
+
+            setContent("");
+            setCodeSnippet("");
+            setPostType("MANUAL");
+            setIsExpanded(false);
+            onPostCreated();
+        } catch (error) {
+            console.error("Failed to create post:", error);
+            alert("Failed to create post. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="glass-card p-5">
+            <div className="flex items-start gap-3 mb-4">
+                {user?.photoURL ? (
+                    <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
+                ) : (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--hive-gradient-primary)", color: "white" }}>
+                        {avatarLetter}
+                    </div>
+                )}
+                <div className="flex-1">
+                    <textarea
+                        placeholder="Share a win, post a snippet, or drop some knowledge..."
+                        className="w-full bg-transparent outline-none text-sm resize-none"
+                        style={{ color: "var(--hive-text-primary)", minHeight: isExpanded ? "80px" : "40px" }}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        onFocus={() => setIsExpanded(true)}
+                        rows={isExpanded ? 3 : 1}
+                    />
+                </div>
+            </div>
+
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        {/* Tabs */}
+                        <div className="flex items-center gap-2 mb-3">
+                            <button
+                                onClick={() => setPostType("MANUAL")}
+                                className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all"
+                                style={{
+                                    background: postType === "MANUAL" ? "var(--hive-gradient-primary)" : "rgba(255,255,255,0.05)",
+                                    color: postType === "MANUAL" ? "white" : "var(--hive-text-secondary)",
+                                }}
+                            >
+                                <Code2 className="w-3.5 h-3.5" /> Code
+                            </button>
+                            <button
+                                onClick={() => setPostType("MILESTONE")}
+                                className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-all"
+                                style={{
+                                    background: postType === "MILESTONE" ? "var(--hive-gradient-primary)" : "rgba(255,255,255,0.05)",
+                                    color: postType === "MILESTONE" ? "white" : "var(--hive-text-secondary)",
+                                }}
+                            >
+                                <Target className="w-3.5 h-3.5" /> Milestone
+                            </button>
+                        </div>
+
+                        {/* Code Snippet Input */}
+                        {postType === "MANUAL" && (
+                            <textarea
+                                placeholder="Paste your code snippet here (optional)..."
+                                className="w-full p-3 rounded-lg text-xs font-mono resize-none mb-3 outline-none"
+                                style={{
+                                    background: "var(--hive-bg-primary)",
+                                    border: "1px solid var(--hive-border)",
+                                    color: "var(--hive-text-primary)",
+                                    minHeight: "100px",
+                                }}
+                                value={codeSnippet}
+                                onChange={(e) => setCodeSnippet(e.target.value)}
+                            />
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Actions */}
+            {isExpanded && (
+                <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
+                    <button
+                        onClick={() => {
+                            setIsExpanded(false);
+                            setContent("");
+                            setCodeSnippet("");
+                        }}
+                        className="px-4 py-1.5 rounded-lg text-xs font-medium"
+                        style={{ color: "var(--hive-text-secondary)" }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || (!content.trim() && !codeSnippet.trim())}
+                        className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 disabled:opacity-50"
+                        style={{ background: "var(--hive-gradient-primary)" }}
+                    >
+                        {isSubmitting ? "Posting..." : <><Plus className="w-3.5 h-3.5" /> Post</>}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* === POST CARD === */
+function PostCard({ post, onReactionToggle }: { post: Post; onReactionToggle: (postId: string, type: "RESPECT" | "FIRE" | "BUG") => void }) {
+    const { user } = useAuth();
+    const userReactions = post.reactions.filter((r) => r.user === user?.uid);
+
+    const hasReacted = (type: "RESPECT" | "FIRE" | "BUG") => {
+        return userReactions.some((r) => r.type === type);
+    };
+
+    const getReactionIcon = (type: "RESPECT" | "FIRE" | "BUG") => {
+        const isActive = hasReacted(type);
+        const style = {
+            color: isActive ? getReactionColor(type) : "var(--hive-text-secondary)",
+        };
+
+        switch (type) {
+            case "RESPECT":
+                return <Heart className="w-4 h-4" style={style} fill={isActive ? "currentColor" : "none"} />;
+            case "FIRE":
+                return <Flame className="w-4 h-4" style={style} fill={isActive ? "currentColor" : "none"} />;
+            case "BUG":
+                return <Bug className="w-4 h-4" style={style} fill={isActive ? "currentColor" : "none"} />;
+        }
+    };
+
+    const getReactionColor = (type: "RESPECT" | "FIRE" | "BUG") => {
+        switch (type) {
+            case "RESPECT":
+                return "var(--hive-accent-danger)";
+            case "FIRE":
+                return "var(--hive-accent-warning)";
+            case "BUG":
+                return "var(--hive-accent-primary)";
+        }
+    };
+
+    const authorName = post.author.username || `${post.author.first_name} ${post.author.last_name}`.trim() || "Anonymous";
+    const avatarLetter = authorName[0]?.toUpperCase() || "?";
+
+    return (
+        <div className="glass-card-interactive p-6">
+            {/* Post Header */}
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                    {post.author.profile.avatar_url ? (
+                        <img src={post.author.profile.avatar_url} alt={authorName} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                        <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                            style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
+                        >
+                            {avatarLetter}
+                        </div>
+                    )}
+                    <div>
+                        <div className="text-sm font-semibold">{authorName}</div>
+                        <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>
+                            {post.author.profile.headline} · {getTimeAgo(post.created_at)}
+                        </div>
+                    </div>
+                </div>
+                <div
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                    style={{
+                        background: `color-mix(in srgb, ${typeColors[post.type]} 15%, transparent)`,
+                        color: typeColors[post.type],
+                    }}
+                >
+                    {typeIcons[post.type]}
+                    {typeLabels[post.type]}
+                </div>
+            </div>
+
+            {/* Content */}
+            <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--hive-text-primary)" }}>
+                {post.content}
+            </p>
+
+            {/* Code Snippet */}
+            {post.code_snippet && (
+                <pre
+                    className="text-xs p-4 rounded-xl mb-4 overflow-x-auto font-mono"
+                    style={{
+                        background: "var(--hive-bg-primary)",
+                        border: "1px solid var(--hive-border)",
+                        color: "var(--hive-accent-primary)",
+                    }}
+                >
+                    {post.code_snippet}
+                </pre>
+            )}
+
+            {/* Reactions */}
+            <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => onReactionToggle(post.id, "RESPECT")}
+                        className="flex items-center gap-1.5 text-xs transition-all hover:scale-110"
+                    >
+                        {getReactionIcon("RESPECT")} {post.reaction_counts.RESPECT || 0}
+                    </button>
+                    <button
+                        onClick={() => onReactionToggle(post.id, "FIRE")}
+                        className="flex items-center gap-1.5 text-xs transition-all hover:scale-110"
+                    >
+                        {getReactionIcon("FIRE")} {post.reaction_counts.FIRE || 0}
+                    </button>
+                    <button
+                        onClick={() => onReactionToggle(post.id, "BUG")}
+                        className="flex items-center gap-1.5 text-xs transition-all hover:scale-110"
+                    >
+                        {getReactionIcon("BUG")} {post.reaction_counts.BUG || 0}
+                    </button>
+                </div>
+                <button className="flex items-center gap-1.5 text-xs" style={{ color: "var(--hive-text-secondary)" }}>
+                    <MessageCircle className="w-4 h-4" /> {post.comment_count}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/* === RIGHT SIDEBAR === */
+function RightSidebar({ userStats, githubActivity }: { userStats: UserStats | null; githubActivity: GitHubActivity | null }) {
+    return (
+        <aside className="hidden xl:block w-80 space-y-6">
+            {/* Stats Card */}
+            <div className="glass-card p-5">
+                <h3 className="text-sm font-semibold mb-4">Your Stats</h3>
+                {userStats ? (
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                        <div>
+                            <div className="text-lg font-bold gradient-text">{userStats.streak}</div>
+                            <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Streak</div>
+                        </div>
+                        <div>
+                            <div className="text-lg font-bold" style={{ color: "var(--hive-accent-warning)" }}>{userStats.elo}</div>
+                            <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>ELO</div>
+                        </div>
+                        <div>
+                            <div className="text-lg font-bold" style={{ color: "var(--hive-accent-success)" }}>
+                                {userStats.xp >= 1000 ? `${(userStats.xp / 1000).toFixed(1)}K` : userStats.xp}
+                            </div>
+                            <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>XP</div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-3 gap-3 text-center animate-pulse">
+                        <div>
+                            <div className="h-6 rounded" style={{ background: "var(--hive-bg-elevated)" }} />
+                            <div className="text-xs mt-1" style={{ color: "var(--hive-text-muted)" }}>Streak</div>
+                        </div>
+                        <div>
+                            <div className="h-6 rounded" style={{ background: "var(--hive-bg-elevated)" }} />
+                            <div className="text-xs mt-1" style={{ color: "var(--hive-text-muted)" }}>ELO</div>
+                        </div>
+                        <div>
+                            <div className="h-6 rounded" style={{ background: "var(--hive-bg-elevated)" }} />
+                            <div className="text-xs mt-1" style={{ color: "var(--hive-text-muted)" }}>XP</div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* GitHub Activity */}
+            {githubActivity && userStats?.github_username && (
+                <div className="glass-card p-5">
+                    <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                        <Github className="w-4 h-4" style={{ color: "var(--hive-accent-primary)" }} />
+                        GitHub Activity
+                    </h3>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <GitCommit className="w-3.5 h-3.5" style={{ color: "var(--hive-text-muted)" }} />
+                                <span className="text-sm" style={{ color: "var(--hive-text-secondary)" }}>Commits</span>
+                            </div>
+                            <span className="text-sm font-bold" style={{ color: "var(--hive-accent-success)" }}>{githubActivity.commits}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Activity className="w-3.5 h-3.5" style={{ color: "var(--hive-text-muted)" }} />
+                                <span className="text-sm" style={{ color: "var(--hive-text-secondary)" }}>Pull Requests</span>
+                            </div>
+                            <span className="text-sm font-bold" style={{ color: "var(--hive-accent-warning)" }}>{githubActivity.prs}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Heart className="w-3.5 h-3.5" style={{ color: "var(--hive-text-muted)" }} />
+                                <span className="text-sm" style={{ color: "var(--hive-text-secondary)" }}>Stars Earned</span>
+                            </div>
+                            <span className="text-sm font-bold" style={{ color: "var(--hive-accent-primary)" }}>{githubActivity.stars}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Trending */}
+            <div className="glass-card p-5">
+                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" style={{ color: "var(--hive-accent-primary)" }} />
+                    Trending Topics
+                </h3>
+                <div className="space-y-3">
+                    {trendingTopics.map((t) => (
+                        <div key={t.tag} className="flex items-center justify-between">
+                            <span className="text-sm font-medium" style={{ color: "var(--hive-accent-primary)" }}>{t.tag}</span>
+                            <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>{t.posts} posts</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </aside>
+    );
+}
+
 /* === MAIN === */
 export default function FeedPage() {
     const { user } = useAuth();
-    const displayName = user?.displayName || user?.email?.split("@")[0] || "Builder";
-    const avatarLetter = displayName[0]?.toUpperCase() || "?";
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [userStats, setUserStats] = useState<UserStats | null>(null);
+    const [githubActivity, setGithubActivity] = useState<GitHubActivity | null>(null);
+
+    const fetchPosts = async () => {
+        try {
+            const data = await apiGet<{ results: Post[] }>("/api/feed/");
+            setPosts(data.results);
+        } catch (error) {
+            console.error("Failed to fetch posts, using mock data:", error);
+            setPosts(mockPosts);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchUserStats = async () => {
+        try {
+            const data = await apiGet<any>("/api/users/me/");
+            setUserStats({
+                streak: data.profile?.streak || 0,
+                elo: data.profile?.elo || 0,
+                xp: data.profile?.xp || 0,
+                github_username: data.profile?.github_username,
+            });
+
+            // Mock GitHub activity (you can replace this with real API call)
+            if (data.profile?.github_username) {
+                setGithubActivity({
+                    commits: 142,
+                    prs: 23,
+                    stars: 89,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to fetch user stats:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchPosts();
+        if (user) {
+            fetchUserStats();
+        }
+    }, [user]);
+
+    const handleReactionToggle = async (postId: string, type: "RESPECT" | "FIRE" | "BUG") => {
+        try {
+            await apiPost(`/api/feed/${postId}/react/`, { type });
+            // Refetch posts to update reaction counts
+            fetchPosts();
+        } catch (error) {
+            console.error("Failed to toggle reaction:", error);
+        }
+    };
 
     return (
         <div className="min-h-screen" style={{ background: "var(--hive-bg-primary)" }}>
@@ -222,151 +718,55 @@ export default function FeedPage() {
                     {/* Feed Column */}
                     <div className="flex-1 max-w-2xl space-y-6">
                         {/* Compose */}
-                        <div className="glass-card p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                {user?.photoURL ? (
-                                    <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
-                                ) : (
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--hive-gradient-primary)", color: "white" }}>
-                                        {avatarLetter}
+                        <ComposeBox onPostCreated={fetchPosts} />
+
+                        {/* Loading Skeleton */}
+                        {isLoading && (
+                            <div className="space-y-6">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="glass-card p-6 animate-pulse">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="w-10 h-10 rounded-full" style={{ background: "var(--hive-bg-elevated)" }} />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-3 rounded" style={{ background: "var(--hive-bg-elevated)", width: "40%" }} />
+                                                <div className="h-2 rounded" style={{ background: "var(--hive-bg-elevated)", width: "60%" }} />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="h-3 rounded" style={{ background: "var(--hive-bg-elevated)" }} />
+                                            <div className="h-3 rounded" style={{ background: "var(--hive-bg-elevated)", width: "90%" }} />
+                                        </div>
                                     </div>
-                                )}
-                                <input
-                                    type="text"
-                                    placeholder="Share a win, post a snippet, or drop some knowledge..."
-                                    className="flex-1 bg-transparent outline-none text-sm"
-                                    style={{ color: "var(--hive-text-primary)" }}
-                                />
+                                ))}
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "var(--hive-text-secondary)" }}>
-                                        <Code2 className="w-3.5 h-3.5" /> Code
-                                    </button>
-                                    <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "var(--hive-text-secondary)" }}>
-                                        <Target className="w-3.5 h-3.5" /> Milestone
-                                    </button>
-                                </div>
-                                <button className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5" style={{ background: "var(--hive-gradient-primary)" }}>
-                                    <Plus className="w-3.5 h-3.5" /> Post
-                                </button>
-                            </div>
-                        </div>
+                        )}
 
                         {/* Posts */}
-                        {posts.map((post, i) => (
+                        {!isLoading && posts.map((post, i) => (
                             <motion.div
                                 key={post.id}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.1, duration: 0.4 }}
-                                className="glass-card p-6"
                             >
-                                {/* Post Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                                            style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
-                                        >
-                                            {post.author.username[0].toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-semibold">{post.author.username}</div>
-                                            <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                                {post.author.headline} · {post.timeAgo}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                                        style={{
-                                            background: `color-mix(in srgb, ${typeColors[post.type]} 15%, transparent)`,
-                                            color: typeColors[post.type],
-                                        }}
-                                    >
-                                        {typeIcons[post.type]}
-                                        {typeLabels[post.type]}
-                                    </div>
-                                </div>
-
-                                {/* Content */}
-                                <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--hive-text-primary)" }}>
-                                    {post.content}
-                                </p>
-
-                                {/* Code Snippet */}
-                                {post.codeSnippet && (
-                                    <pre
-                                        className="text-xs p-4 rounded-xl mb-4 overflow-x-auto font-mono"
-                                        style={{
-                                            background: "var(--hive-bg-primary)",
-                                            border: "1px solid var(--hive-border)",
-                                            color: "var(--hive-accent-primary)",
-                                        }}
-                                    >
-                                        {post.codeSnippet}
-                                    </pre>
-                                )}
-
-                                {/* Reactions */}
-                                <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
-                                    <div className="flex items-center gap-4">
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Heart className="w-4 h-4" /> {post.reactions.respect}
-                                        </button>
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Flame className="w-4 h-4" /> {post.reactions.fire}
-                                        </button>
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Bug className="w-4 h-4" /> {post.reactions.bug}
-                                        </button>
-                                    </div>
-                                    <button className="flex items-center gap-1.5 text-xs" style={{ color: "var(--hive-text-secondary)" }}>
-                                        <MessageCircle className="w-4 h-4" /> {post.comments}
-                                    </button>
-                                </div>
+                                <PostCard post={post} onReactionToggle={handleReactionToggle} />
                             </motion.div>
                         ))}
+
+                        {/* Empty State */}
+                        {!isLoading && posts.length === 0 && (
+                            <div className="glass-card p-12 text-center">
+                                <Zap className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--hive-accent-primary)" }} />
+                                <h3 className="text-lg font-bold mb-2">No posts yet</h3>
+                                <p className="text-sm" style={{ color: "var(--hive-text-muted)" }}>
+                                    Be the first to share something with the community!
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Sidebar */}
-                    <aside className="hidden xl:block w-80 space-y-6">
-                        {/* Stats Card */}
-                        <div className="glass-card p-5">
-                            <h3 className="text-sm font-semibold mb-4">Your Stats</h3>
-                            <div className="grid grid-cols-3 gap-3 text-center">
-                                <div>
-                                    <div className="text-lg font-bold gradient-text">47</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Streak</div>
-                                </div>
-                                <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-warning)" }}>1842</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>ELO</div>
-                                </div>
-                                <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-success)" }}>12.4K</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>XP</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Trending */}
-                        <div className="glass-card p-5">
-                            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4" style={{ color: "var(--hive-accent-primary)" }} />
-                                Trending Topics
-                            </h3>
-                            <div className="space-y-3">
-                                {trendingTopics.map((t) => (
-                                    <div key={t.tag} className="flex items-center justify-between">
-                                        <span className="text-sm font-medium" style={{ color: "var(--hive-accent-primary)" }}>{t.tag}</span>
-                                        <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>{t.posts} posts</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </aside>
+                    <RightSidebar userStats={userStats} githubActivity={githubActivity} />
                 </div>
             </main>
         </div>
