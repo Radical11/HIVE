@@ -166,10 +166,29 @@ class GitHubWebhookView(APIView):
             
             # Check if repo is tracked and active
             try:
-                repo_obj = Repository.objects.get(github_repo_id=repo_id, is_active=True)
+                repo_obj = Repository.objects.get(github_repo_id=repo_id)
+                if not repo_obj.is_active:
+                     return Response({'message': f'Repo {repo_full_name} is inactive'}, status=status.HTTP_200_OK)
                 user = repo_obj.user
             except Repository.DoesNotExist:
-                return Response({'message': f'Repo {repo_full_name} not active or not found'}, status=status.HTTP_200_OK)
+                # If repo not found, check if the owner is a user on our platform
+                owner_login = repository.get('owner', {}).get('login')
+                if not owner_login:
+                     return Response({'message': 'Repo owner not found in payload'}, status=status.HTTP_200_OK)
+                
+                try:
+                    profile = UserProfile.objects.get(github_handle__iexact=owner_login)
+                    user = profile.user
+                    # Auto-create and activate the repo
+                    repo_obj = Repository.objects.create(
+                        user=user,
+                        github_repo_id=repo_id,
+                        full_name=repo_full_name,
+                        html_url=repository.get('html_url', ''),
+                        is_active=True
+                    )
+                except UserProfile.DoesNotExist:
+                    return Response({'message': f'Repo owner {owner_login} not found on Hive'}, status=status.HTTP_200_OK)
 
             # Aggregate commits for a single post
             if not commits:
@@ -210,14 +229,14 @@ class GitHubWebhookView(APIView):
             # Let's just use the commit message.
             
             post_content = head_message
-            
+
             Post.objects.create(
                 author=user,
                 content=post_content,
                 type='GITHUB_COMMIT',
                 code_snippet=code_snippet
             )
-                
+            
             return Response({'message': f'Processed {len(commits)} commits for {repo_full_name}'}, status=status.HTTP_200_OK)
 
         elif event_type in ['installation', 'installation_repositories']:
