@@ -122,3 +122,152 @@ class GitHubLoginView(APIView):
             'token': custom_token,
             'user': UserSerializer(user).data
         })
+
+import hmac
+import hashlib
+from django.conf import settings
+from feed.models import Post
+from .models import Repository, UserProfile
+
+class GitHubWebhookView(APIView):
+    """
+    POST /api/users/auth/github/webhook/
+    Handles GitHub webhooks for:
+    - push: Create Post if repo is active.
+    - installation: Sync repos when App is installed.
+    - installation_repositories: Sync repos when added/removed.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # 1. Verify Signature
+        signature = request.META.get('HTTP_X_HUB_SIGNATURE_256')
+        if not signature:
+            return Response({'error': 'Missing signature'}, status=status.HTTP_403_FORBIDDEN)
+            
+        secret = settings.GITHUB_WEBHOOK_SECRET.encode('utf-8')
+        body = request.body
+        expected_signature = 'sha256=' + hmac.new(secret, body, hashlib.sha256).hexdigest()
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            return Response({'error': 'Invalid signature'}, status=status.HTTP_403_FORBIDDEN)
+            
+        # 2. Process Event
+        event_type = request.META.get('HTTP_X_GITHUB_EVENT')
+        payload = request.data
+        sender = payload.get('sender', {})
+        sender_login = sender.get('login')
+
+        if event_type == 'push':
+            repository = payload.get('repository', {})
+            repo_full_name = repository.get('full_name')
+            repo_id = str(repository.get('id'))
+            commits = payload.get('commits', [])
+            
+            # Check if repo is tracked and active
+            try:
+                repo_obj = Repository.objects.get(github_repo_id=repo_id, is_active=True)
+                user = repo_obj.user
+            except Repository.DoesNotExist:
+                return Response({'message': f'Repo {repo_full_name} not active or not found'}, status=status.HTTP_200_OK)
+
+            created_count = 0
+            for commit in commits:
+                message = commit.get('message')
+                url = commit.get('url')
+                commit_id = commit.get('id')[:7]
+                
+                # Use default description if set, otherwise just commit message
+                intro = repo_obj.default_description if repo_obj.default_description else f"🚀 Pushed to {repo_full_name}"
+                content = f"{intro}\n\n**Commit:** {message}\n[View Commit]({url})"
+                
+                Post.objects.create(
+                    author=user,
+                    content=content,
+                    type='GITHUB_COMMIT',
+                    code_snippet=f"Repo: {repo_full_name}\nCommit: {commit_id}"
+                )
+                created_count += 1
+                
+            return Response({'message': f'Processed {created_count} commits for {repo_full_name}'}, status=status.HTTP_200_OK)
+
+        elif event_type in ['installation', 'installation_repositories']:
+            action = payload.get('action')
+            installation = payload.get('installation', {})
+            
+            # Identify User: sender.login should match github_handle
+            try:
+                profile = UserProfile.objects.get(github_handle=sender_login)
+                user = profile.user
+            except UserProfile.DoesNotExist:
+                return Response({'message': f'User {sender_login} not found'}, status=status.HTTP_200_OK)
+
+            if event_type == 'installation':
+                # Sync all repos in the installation
+                if action in ['created', 'added']:
+                    repos = payload.get('repositories', [])
+                    self._sync_repos(user, repos)
+                elif action == 'deleted':
+                    # App uninstalled -> Remove all repos? Or just deactivate?
+                    # Let's delete to keep clean.
+                    Repository.objects.filter(user=user).delete()
+            
+            elif event_type == 'installation_repositories':
+                if action == 'added':
+                    repos = payload.get('repositories_added', [])
+                    self._sync_repos(user, repos)
+                elif action == 'removed':
+                    repos = payload.get('repositories_removed', [])
+                    for repo in repos:
+                        Repository.objects.filter(user=user, github_repo_id=str(repo.get('id'))).delete()
+
+            return Response({'message': 'Synced repositories'}, status=status.HTTP_200_OK)
+
+        elif event_type == 'ping':
+             return Response({'message': 'Pong!'}, status=status.HTTP_200_OK)
+
+        return Response({'message': 'Event ignored'}, status=status.HTTP_200_OK)
+
+    def _sync_repos(self, user, repos_data):
+        for repo in repos_data:
+            repo_obj, _ = Repository.objects.get_or_create(
+                user=user,
+                github_repo_id=str(repo.get('id')),
+                defaults={
+                    'full_name': repo.get('full_name'),
+                    'html_url': repo.get('html_url', f"https://github.com/{repo.get('full_name')}"),
+                    'is_active': True
+                }
+            )
+            if not repo_obj.is_active:
+                repo_obj.is_active = True
+                repo_obj.save()
+
+
+from .serializers import RepositorySerializer
+
+class RepositoryListView(generics.ListAPIView):
+    serializer_class = RepositorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Repository.objects.filter(user=self.request.user)
+    
+    def post(self, request, *args, **kwargs):
+        """
+        Toggle is_active or update description for a specific repo.
+        Body: { "id": <db_id>, "is_active": true/false, "default_description": "..." }
+        """
+        repo_id = request.data.get('id')
+        try:
+            repo = Repository.objects.get(id=repo_id, user=request.user)
+        except Repository.DoesNotExist:
+             return Response({'error': 'Repository not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        if 'is_active' in request.data:
+            repo.is_active = request.data['is_active']
+        if 'default_description' in request.data:
+            repo.default_description = request.data['default_description']
+        
+        repo.save()
+        return Response(RepositorySerializer(repo).data)

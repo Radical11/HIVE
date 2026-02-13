@@ -26,46 +26,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 
 /* === MOCK DATA === */
-const posts = [
-    {
-        id: "1",
-        author: { username: "sarah_dev", headline: "Full Stack @ Stripe" },
-        type: "GITHUB_COMMIT",
-        content: "Just shipped a major refactor of our payment processing pipeline. Reduced latency by 40% using edge functions 🚀",
-        codeSnippet: `// Before: 240ms avg response
-const result = await processPayment(data);
-
-// After: 145ms avg response  
-const result = await edge.processPayment(data, {
-  region: 'auto',
-  cache: 'aggressive'
-});`,
-        reactions: { respect: 42, fire: 18, bug: 2 },
-        comments: 7,
-        timeAgo: "2h ago",
-    },
-    {
-        id: "2",
-        author: { username: "algo_master", headline: "CP Specialist | 2400 CF" },
-        type: "CODEFORCES_SOLVE",
-        content: "Cracked Codeforces Round #917 Div. 1 E (Hard) - Tree DP with Heavy-Light trick. Used binary lifting + segment tree combo. Took me 3 attempts but the solution is clean 💪",
-        codeSnippet: null,
-        reactions: { respect: 89, fire: 34, bug: 0 },
-        comments: 12,
-        timeAgo: "4h ago",
-    },
-    {
-        id: "3",
-        author: { username: "cyber_ghost", headline: "Security Researcher" },
-        type: "MILESTONE",
-        content: "🏆 Just earned my OSCP certification after 4 months of grinding. The exam was 24 hours of pure adrenaline. Never giving up paid off.",
-        codeSnippet: null,
-        reactions: { respect: 234, fire: 89, bug: 1 },
-        comments: 31,
-        timeAgo: "6h ago",
-    },
-];
-
+/* === MOCK DATA FOR TRENDING ONLY === */
 const trendingTopics = [
     { tag: "#rust-rewrite", posts: 342 },
     { tag: "#ai-agents", posts: 891 },
@@ -93,6 +54,9 @@ const typeLabels: Record<string, string> = {
     MILESTONE: "Milestone",
     MANUAL: "Post",
 };
+import { apiGet, apiPost } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 
 /* === SIDEBAR NAV === */
 function Sidebar() {
@@ -184,11 +148,71 @@ function Sidebar() {
     );
 }
 
+interface Post {
+    id: string;
+    author: {
+        username: string;
+        profile: {
+            headline: string;
+            avatar_url: string;
+        };
+    };
+    content: string;
+    code_snippet?: string;
+    type: string;
+    created_at: string;
+    reaction_counts: {
+        RESPECT?: number;
+        FIRE?: number;
+        BUG?: number;
+    };
+    comment_count: number;
+}
+
 /* === MAIN === */
 export default function FeedPage() {
     const { user } = useAuth();
     const displayName = user?.displayName || user?.email?.split("@")[0] || "Builder";
     const avatarLetter = displayName[0]?.toUpperCase() || "?";
+
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loadingPosts, setLoadingPosts] = useState(true);
+    const [newPostContent, setNewPostContent] = useState("");
+    const [currentUserDetails, setCurrentUserDetails] = useState<{ is_github_connected: boolean } | null>(null);
+
+    // Fetch posts
+    const fetchPosts = async () => {
+        try {
+            setLoadingPosts(true);
+            const data = await apiGet<Post[]>("/api/feed/");
+            setPosts(data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoadingPosts(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchPosts();
+            apiGet("/api/users/me/").then(data => setCurrentUserDetails(data)).catch(console.error);
+        }
+    }, [user]);
+
+    const handleCreatePost = async () => {
+        if (!newPostContent.trim()) return;
+        try {
+            const newPost = await apiPost<Post>("/api/feed/", {
+                content: newPostContent,
+                type: "MANUAL"
+            });
+            setPosts([newPost, ...posts]);
+            setNewPostContent("");
+        } catch (err) {
+            console.error("Failed to post:", err);
+        }
+    };
 
     return (
         <div className="min-h-screen" style={{ background: "var(--hive-bg-primary)" }}>
@@ -221,6 +245,34 @@ export default function FeedPage() {
                 <div className="flex gap-6 p-6">
                     {/* Feed Column */}
                     <div className="flex-1 max-w-2xl space-y-6">
+
+                        {/* Connect GitHub Banner */}
+                        {currentUserDetails && !currentUserDetails.is_github_connected && (
+                            <div className="glass-card p-5 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+                                <div className="relative z-10 flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                                            <GitCommit className="w-5 h-5 text-purple-400" />
+                                            Connect GitHub
+                                        </h3>
+                                        <p className="text-sm text-gray-400 max-w-sm">
+                                            Link your repositories to automatically post your commits and milestones to the feed.
+                                        </p>
+                                    </div>
+                                    <a
+                                        href="https://github.com/apps/hiveeeee/installations/new"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-5 py-2.5 rounded-xl font-bold text-white transition-all transform hover:scale-105 shadow-lg shadow-purple-500/20"
+                                        style={{ background: "var(--hive-gradient-primary)" }}
+                                    >
+                                        Connect Now
+                                    </a>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Compose */}
                         <div className="glass-card p-5">
                             <div className="flex items-center gap-3 mb-4">
@@ -233,6 +285,8 @@ export default function FeedPage() {
                                 )}
                                 <input
                                     type="text"
+                                    value={newPostContent}
+                                    onChange={(e) => setNewPostContent(e.target.value)}
                                     placeholder="Share a win, post a snippet, or drop some knowledge..."
                                     className="flex-1 bg-transparent outline-none text-sm"
                                     style={{ color: "var(--hive-text-primary)" }}
@@ -247,87 +301,100 @@ export default function FeedPage() {
                                         <Target className="w-3.5 h-3.5" /> Milestone
                                     </button>
                                 </div>
-                                <button className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5" style={{ background: "var(--hive-gradient-primary)" }}>
+                                <button
+                                    onClick={handleCreatePost}
+                                    className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5"
+                                    style={{ background: "var(--hive-gradient-primary)" }}
+                                >
                                     <Plus className="w-3.5 h-3.5" /> Post
                                 </button>
                             </div>
                         </div>
 
                         {/* Posts */}
-                        {posts.map((post, i) => (
-                            <motion.div
-                                key={post.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1, duration: 0.4 }}
-                                className="glass-card p-6"
-                            >
-                                {/* Post Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                                            style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
-                                        >
-                                            {post.author.username[0].toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <div className="text-sm font-semibold">{post.author.username}</div>
-                                            <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                                {post.author.headline} · {post.timeAgo}
+                        {loadingPosts ? (
+                            <div className="text-center py-10 opacity-50">Loading feed...</div>
+                        ) : posts.length === 0 ? (
+                            <div className="text-center py-10 opacity-50">No posts yet. Be the first!</div>
+                        ) : (
+                            posts.map((post, i) => (
+                                <motion.div
+                                    key={post.id}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.05, duration: 0.4 }}
+                                    className="glass-card p-6"
+                                >
+                                    {/* Post Header */}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3">
+                                            {post.author.profile?.avatar_url ? (
+                                                <img src={post.author.profile.avatar_url} className="w-10 h-10 rounded-full object-cover" />
+                                            ) : (
+                                                <div
+                                                    className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                                                    style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
+                                                >
+                                                    {post.author.username[0].toUpperCase()}
+                                                </div>
+                                            )}
+                                            <div>
+                                                <div className="text-sm font-semibold">{post.author.username}</div>
+                                                <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>
+                                                    {post.author.profile?.headline || "Developer"} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                                                </div>
                                             </div>
                                         </div>
+                                        <div
+                                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                                            style={{
+                                                background: `color-mix(in srgb, ${typeColors[post.type] || 'gray'} 15%, transparent)`,
+                                                color: typeColors[post.type] || 'gray',
+                                            }}
+                                        >
+                                            {typeIcons[post.type]}
+                                            {typeLabels[post.type] || post.type}
+                                        </div>
                                     </div>
-                                    <div
-                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                                        style={{
-                                            background: `color-mix(in srgb, ${typeColors[post.type]} 15%, transparent)`,
-                                            color: typeColors[post.type],
-                                        }}
-                                    >
-                                        {typeIcons[post.type]}
-                                        {typeLabels[post.type]}
-                                    </div>
-                                </div>
 
-                                {/* Content */}
-                                <p className="text-sm leading-relaxed mb-4" style={{ color: "var(--hive-text-primary)" }}>
-                                    {post.content}
-                                </p>
+                                    {/* Content */}
+                                    <p className="text-sm leading-relaxed mb-4 whitespace-pre-wrap" style={{ color: "var(--hive-text-primary)" }}>
+                                        {post.content}
+                                    </p>
 
-                                {/* Code Snippet */}
-                                {post.codeSnippet && (
-                                    <pre
-                                        className="text-xs p-4 rounded-xl mb-4 overflow-x-auto font-mono"
-                                        style={{
-                                            background: "var(--hive-bg-primary)",
-                                            border: "1px solid var(--hive-border)",
-                                            color: "var(--hive-accent-primary)",
-                                        }}
-                                    >
-                                        {post.codeSnippet}
-                                    </pre>
-                                )}
+                                    {/* Code Snippet */}
+                                    {post.code_snippet && (
+                                        <pre
+                                            className="text-xs p-4 rounded-xl mb-4 overflow-x-auto font-mono"
+                                            style={{
+                                                background: "var(--hive-bg-primary)",
+                                                border: "1px solid var(--hive-border)",
+                                                color: "var(--hive-accent-primary)",
+                                            }}
+                                        >
+                                            {post.code_snippet}
+                                        </pre>
+                                    )}
 
-                                {/* Reactions */}
-                                <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
-                                    <div className="flex items-center gap-4">
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Heart className="w-4 h-4" /> {post.reactions.respect}
-                                        </button>
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Flame className="w-4 h-4" /> {post.reactions.fire}
-                                        </button>
-                                        <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                            <Bug className="w-4 h-4" /> {post.reactions.bug}
+                                    {/* Reactions */}
+                                    <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
+                                        <div className="flex items-center gap-4">
+                                            <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
+                                                <Heart className="w-4 h-4" /> {post.reaction_counts?.RESPECT || 0}
+                                            </button>
+                                            <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
+                                                <Flame className="w-4 h-4" /> {post.reaction_counts?.FIRE || 0}
+                                            </button>
+                                            <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
+                                                <Bug className="w-4 h-4" /> {post.reaction_counts?.BUG || 0}
+                                            </button>
+                                        </div>
+                                        <button className="flex items-center gap-1.5 text-xs" style={{ color: "var(--hive-text-secondary)" }}>
+                                            <MessageCircle className="w-4 h-4" /> {post.comment_count || 0}
                                         </button>
                                     </div>
-                                    <button className="flex items-center gap-1.5 text-xs" style={{ color: "var(--hive-text-secondary)" }}>
-                                        <MessageCircle className="w-4 h-4" /> {post.comments}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            )))}
                     </div>
 
                     {/* Right Sidebar */}

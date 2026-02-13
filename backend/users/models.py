@@ -20,3 +20,14 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
+
+class Repository(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='repositories')
+    github_repo_id = models.CharField(max_length=100, unique=True)
+    full_name = models.CharField(max_length=255) # e.g. "bhoum/HIVE"
+    html_url = models.URLField()
+    is_active = models.BooleanField(default=False)
+    default_description = models.TextField(blank=True, default='')
+    
+    def __str__(self):
+        return self.full_name
