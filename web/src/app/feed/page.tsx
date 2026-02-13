@@ -20,18 +20,12 @@ import {
     Target,
     TrendingUp,
     Settings,
+    LogIn,
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* === MOCK DATA === */
-const currentUser = {
-    username: "codewizard42",
-    avatar: null,
-    streak: 47,
-    xp: 12400,
-    elo: 1842,
-};
-
 const posts = [
     {
         id: "1",
@@ -102,6 +96,8 @@ const typeLabels: Record<string, string> = {
 
 /* === SIDEBAR NAV === */
 function Sidebar() {
+    const { user, loading } = useAuth();
+
     const navItems = [
         { icon: <Home className="w-5 h-5" />, label: "Feed", href: "/feed", active: true },
         { icon: <Trophy className="w-5 h-5" />, label: "Arena", href: "/arena", active: false },
@@ -110,15 +106,18 @@ function Sidebar() {
         { icon: <User className="w-5 h-5" />, label: "Profile", href: "/profile", active: false },
     ];
 
+    const displayName = user?.displayName || user?.email?.split("@")[0] || "Anonymous";
+    const avatarLetter = displayName[0]?.toUpperCase() || "?";
+
     return (
         <aside className="fixed left-0 top-0 h-full w-64 p-6 hidden lg:flex flex-col" style={{ borderRight: "1px solid var(--hive-border)", background: "var(--hive-bg-secondary)" }}>
             {/* Logo */}
-            <div className="flex items-center gap-2 mb-10">
+            <Link href="/" className="flex items-center gap-2 mb-10">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--hive-gradient-primary)" }}>
                     <Zap className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold gradient-text">HIVE</span>
-            </div>
+            </Link>
 
             {/* Nav */}
             <nav className="flex-1 space-y-1">
@@ -139,28 +138,58 @@ function Sidebar() {
             </nav>
 
             {/* User Card */}
-            <div className="glass-card p-4">
-                <div className="flex items-center gap-3">
-                    <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{ background: "var(--hive-gradient-primary)", color: "white" }}
-                    >
-                        {currentUser.username[0].toUpperCase()}
-                    </div>
-                    <div>
-                        <div className="text-sm font-medium">{currentUser.username}</div>
-                        <div className="text-xs flex items-center gap-1" style={{ color: "var(--hive-accent-primary)" }}>
-                            <Flame className="w-3 h-3" /> {currentUser.streak} day streak
+            {loading ? (
+                <div className="glass-card p-4 animate-pulse">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full" style={{ background: "var(--hive-bg-elevated)" }} />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-3 rounded" style={{ background: "var(--hive-bg-elevated)", width: "60%" }} />
+                            <div className="h-2 rounded" style={{ background: "var(--hive-bg-elevated)", width: "40%" }} />
                         </div>
                     </div>
                 </div>
-            </div>
+            ) : user ? (
+                <div className="glass-card p-4">
+                    <div className="flex items-center gap-3">
+                        {user.photoURL ? (
+                            <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                            <div
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
+                                style={{ background: "var(--hive-gradient-primary)", color: "white" }}
+                            >
+                                {avatarLetter}
+                            </div>
+                        )}
+                        <div>
+                            <div className="text-sm font-medium">{displayName}</div>
+                            <div className="text-xs flex items-center gap-1" style={{ color: "var(--hive-accent-primary)" }}>
+                                <Flame className="w-3 h-3" /> Active
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <Link href="/login" className="glass-card p-4 flex items-center gap-3 hover:scale-[1.02] transition-transform">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(0,212,255,0.1)", color: "var(--hive-accent-primary)" }}>
+                        <LogIn className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <div className="text-sm font-medium" style={{ color: "var(--hive-accent-primary)" }}>Sign In</div>
+                        <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Start your journey</div>
+                    </div>
+                </Link>
+            )}
         </aside>
     );
 }
 
 /* === MAIN === */
 export default function FeedPage() {
+    const { user } = useAuth();
+    const displayName = user?.displayName || user?.email?.split("@")[0] || "Builder";
+    const avatarLetter = displayName[0]?.toUpperCase() || "?";
+
     return (
         <div className="min-h-screen" style={{ background: "var(--hive-bg-primary)" }}>
             <Sidebar />
@@ -195,9 +224,13 @@ export default function FeedPage() {
                         {/* Compose */}
                         <div className="glass-card p-5">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--hive-gradient-primary)", color: "white" }}>
-                                    C
-                                </div>
+                                {user?.photoURL ? (
+                                    <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--hive-gradient-primary)", color: "white" }}>
+                                        {avatarLetter}
+                                    </div>
+                                )}
                                 <input
                                     type="text"
                                     placeholder="Share a win, post a snippet, or drop some knowledge..."
@@ -304,15 +337,15 @@ export default function FeedPage() {
                             <h3 className="text-sm font-semibold mb-4">Your Stats</h3>
                             <div className="grid grid-cols-3 gap-3 text-center">
                                 <div>
-                                    <div className="text-lg font-bold gradient-text">{currentUser.streak}</div>
+                                    <div className="text-lg font-bold gradient-text">47</div>
                                     <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Streak</div>
                                 </div>
                                 <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-warning)" }}>{currentUser.elo}</div>
+                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-warning)" }}>1842</div>
                                     <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>ELO</div>
                                 </div>
                                 <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-success)" }}>{(currentUser.xp / 1000).toFixed(1)}K</div>
+                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-success)" }}>12.4K</div>
                                     <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>XP</div>
                                 </div>
                             </div>
