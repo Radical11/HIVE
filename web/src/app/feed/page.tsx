@@ -47,8 +47,8 @@ const result = await edge.processPayment(data, {
     {
         id: "2",
         author: { username: "algo_master", headline: "CP Specialist | 2400 CF" },
-        type: "LEETCODE_SOLVE",
-        content: "Cracked LeetCode #2867 (Hard) - Count Valid Paths in a Tree. Used sieve + DFS combo. Took me 3 attempts but the solution is clean 💪",
+        type: "CODEFORCES_SOLVE",
+        content: "Cracked Codeforces Round #917 Div. 1 E (Hard) - Tree DP with Heavy-Light trick. Used binary lifting + segment tree combo. Took me 3 attempts but the solution is clean 💪",
         codeSnippet: null,
         reactions: { respect: 89, fire: 34, bug: 0 },
         comments: 12,
@@ -75,21 +75,21 @@ const trendingTopics = [
 
 const typeIcons: Record<string, React.ReactNode> = {
     GITHUB_COMMIT: <GitCommit className="w-4 h-4" />,
-    LEETCODE_SOLVE: <Code2 className="w-4 h-4" />,
+    CODEFORCES_SOLVE: <Code2 className="w-4 h-4" />,
     MILESTONE: <Target className="w-4 h-4" />,
     MANUAL: <Zap className="w-4 h-4" />,
 };
 
 const typeColors: Record<string, string> = {
     GITHUB_COMMIT: "var(--hive-accent-success)",
-    LEETCODE_SOLVE: "var(--hive-accent-warning)",
+    CODEFORCES_SOLVE: "var(--hive-accent-warning)",
     MILESTONE: "var(--hive-accent-primary)",
     MANUAL: "var(--hive-accent-secondary)",
 };
 
 const typeLabels: Record<string, string> = {
     GITHUB_COMMIT: "Commit",
-    LEETCODE_SOLVE: "Challenge Solved",
+    CODEFORCES_SOLVE: "CF Solved",
     MILESTONE: "Milestone",
     MANUAL: "Post",
 };

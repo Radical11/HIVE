@@ -6,7 +6,7 @@ class Post(models.Model):
     POST_TYPES = (
         ('MANUAL', 'Manual'),
         ('GITHUB_COMMIT', 'GitHub Commit'),
-        ('LEETCODE_SOLVE', 'LeetCode Solve'),
+        ('CODEFORCES_SOLVE', 'Codeforces Solve'),
         ('MILESTONE', 'Milestone'),
     )
 
