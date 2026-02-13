@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithGoogle, signInWithGithub } from "@/lib/firebase";
+import { apiPost } from "@/lib/api";
 
 function GoogleIcon({ className }: { className?: string }) {
     return (
@@ -43,7 +44,23 @@ export default function RegisterPage() {
         setLoading(true);
         setError("");
         try {
-            await signInWithGithub();
+            const { result, githubAccessToken } = await signInWithGithub();
+            // Auto-link GitHub profile if we got an access token
+            if (githubAccessToken) {
+                const ghUsername = result.user.providerData.find(
+                    (p) => p.providerId === "github.com"
+                )?.uid;
+                if (ghUsername) {
+                    try {
+                        await apiPost("/api/github/link/", {
+                            username: ghUsername,
+                            access_token: githubAccessToken,
+                        });
+                    } catch {
+                        // Non-blocking: profile linking can fail silently
+                    }
+                }
+            }
             router.push("/feed");
         } catch (err: any) {
             setError(err.message || "GitHub sign-up failed");

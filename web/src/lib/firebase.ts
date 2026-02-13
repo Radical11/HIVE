@@ -25,15 +25,21 @@ const auth = getAuth(app);
 // Providers
 const googleProvider = new GoogleAuthProvider();
 const githubProvider = new GithubAuthProvider();
+// Request additional GitHub scopes for repo/user access
+githubProvider.addScope("read:user");
+githubProvider.addScope("repo");
 
 // Sign in with Google
 export async function signInWithGoogle() {
     return signInWithPopup(auth, googleProvider);
 }
 
-// Sign in with GitHub
+// Sign in with GitHub — returns the GitHub OAuth access token alongside the credential
 export async function signInWithGithub() {
-    return signInWithPopup(auth, githubProvider);
+    const result = await signInWithPopup(auth, githubProvider);
+    const credential = GithubAuthProvider.credentialFromResult(result);
+    const githubAccessToken = credential?.accessToken || "";
+    return { result, githubAccessToken };
 }
 
 // Sign out
@@ -41,4 +47,4 @@ export async function signOut() {
     return firebaseSignOut(auth);
 }
 
-export { auth, onAuthStateChanged, type User };
+export { auth, onAuthStateChanged, GithubAuthProvider, type User };

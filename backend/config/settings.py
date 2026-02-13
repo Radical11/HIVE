@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
     'users',
     'feed',
     'arena',
+    'github_integration',
 ]
 
 MIDDLEWARE = [
@@ -95,3 +97,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }
+
+# GitHub Integration
+GITHUB_WEBHOOK_SECRET = os.environ.get('GITHUB_WEBHOOK_SECRET', '')
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')  # Optional server-level PAT for higher rate limits

@@ -6,4 +6,5 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/feed/', include('feed.urls')),
     path('api/arena/', include('arena.urls')),
+    path('api/github/', include('github_integration.urls')),
 ]
