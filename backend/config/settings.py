@@ -95,3 +95,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }
+
+# GitHub OAuth
+GITHUB_CLIENT_ID = 'Iv23ctXKfriGSPQ1q5nh'
+GITHUB_CLIENT_SECRET = '76308c49a654f5a4b0ed62d5f2d616f971c6afaf'
