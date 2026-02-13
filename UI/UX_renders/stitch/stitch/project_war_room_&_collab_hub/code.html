@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hive - Project War Room</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0f172a", // Darker Slate for Cyber-Grid base
+                        "primary-light": "#1e293b", 
+                        "primary-lighter": "#334155",
+                        "accent": "#00f0ff", // Neon Cyan
+                        "accent-dim": "rgba(0, 240, 255, 0.1)",
+                        "accent-glow": "rgba(0, 240, 255, 0.4)",
+                        "success": "#00ff9d",
+                        "warning": "#facc15",
+                        "danger": "#ff3860",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#05090c", // Deep black-blue
+                        "glass": "rgba(15, 23, 42, 0.7)",
+                        "glass-border": "rgba(0, 240, 255, 0.15)", // Cyan tint on borders
+                        "cyber-grid": "#111827",
+                    },
+                    fontFamily: {
+                        "display": ["Rubik", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem", 
+                        "lg": "0.5rem", 
+                        "xl": "0.75rem", 
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    backgroundImage: {
+                        'grid-pattern': "linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px)",
+                        'scanline': "linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.3) 50%)"
+                    },
+                    boxShadow: {
+                        'neon': '0 0 5px theme("colors.accent"), 0 0 20px theme("colors.accent-dim")',
+                        'neon-inset': 'inset 0 0 5px theme("colors.accent-dim")',
+                    }
+                },
+            },
+        }
+    </script>
+<style>::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #05090c; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00f0ff; 
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+        .neon-text {
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.7), 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+        .grid-bg {
+            background-size: 30px 30px;
+        }
+        .scanline-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink {
+            animation: blink 1s step-end infinite;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-300 h-screen overflow-hidden flex selection:bg-accent selection:text-background-dark">
+<aside class="w-20 bg-[#0a0e14] border-r border-glass-border flex flex-col items-center py-6 z-30 relative">
+<div class="mb-10 w-12 h-12 bg-primary-light border border-accent/30 rounded-lg flex items-center justify-center shadow-neon group cursor-pointer hover:bg-accent/10 transition-all">
+<span class="material-symbols-outlined text-accent text-3xl group-hover:scale-110 transition-transform">hexagon</span>
+</div>
+<nav class="flex-1 flex flex-col gap-8 w-full px-4">
+<a class="group relative flex items-center justify-center w-full h-10 rounded-lg transition-all hover:bg-accent-dim hover:text-accent" href="#">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent transition-colors">terminal</span>
+<div class="absolute left-[-1rem] top-1/2 -translate-y-1/2 w-1 h-0 bg-accent rounded-r-full transition-all group-hover:h-6 opacity-0 group-hover:opacity-100"></div>
+</a>
+<a class="group relative flex items-center justify-center w-full h-10 bg-accent-dim rounded-lg shadow-neon-inset border border-accent/20" href="#">
+<span class="material-symbols-outlined text-accent neon-text">stadia_controller</span>
+<div class="absolute left-[-1rem] top-1/2 -translate-y-1/2 w-1 h-6 bg-accent rounded-r-full shadow-[0_0_10px_rgba(0,240,255,0.8)]"></div>
+</a>
+<a class="group relative flex items-center justify-center w-full h-10 rounded-lg transition-all hover:bg-accent-dim hover:text-accent" href="#">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent transition-colors">code_blocks</span>
+</a>
+<a class="group relative flex items-center justify-center w-full h-10 rounded-lg transition-all hover:bg-accent-dim hover:text-accent" href="#">
+<span class="material-symbols-outlined text-slate-500 group-hover:text-accent transition-colors">monitoring</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-6 items-center">
+<button class="w-10 h-10 rounded-lg hover:bg-primary-light flex items-center justify-center text-slate-400 hover:text-accent transition-colors">
+<span class="material-symbols-outlined text-xl">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-accent/50 p-0.5">
+<img alt="User Profile" class="w-full h-full object-cover rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4WbmUMMUSxfFYjOH_1ob5irlD3pgjPw5hMOCE5CS-eaGHy8XecimbW41rvbooWd7E1GOzE4XX0T6Um_WttVyb0ImXIXVjzWfaSZnUYkkLJKVlkJcpNBtAW_53QoMkXHmSOalz0yxtx8xoevzAOP0t9hNp05HTnMCGkaf3pm8fcWQFDZDvN0gJaXXisDGurA9lvqciggolEJhG_6RRXPex-TRPiqRlS-LOWc5umu-QBADcucfBinR3E2G8Wfn10s_avLFYdg8FaEwG"/>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full relative overflow-hidden bg-grid-pattern grid-bg">
+<div class="absolute inset-0 scanline-overlay z-50 opacity-20 pointer-events-none"></div>
+<div class="absolute top-[-20%] left-[30%] w-[800px] h-[800px] bg-accent/5 rounded-full blur-[150px] pointer-events-none"></div>
+<div class="absolute bottom-[-20%] right-[10%] w-[600px] h-[600px] bg-blue-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+<header class="h-16 border-b border-glass-border bg-background-dark/90 backdrop-blur-md flex items-center justify-between px-6 z-20">
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<h1 class="text-lg font-mono font-bold text-white tracking-wider flex items-center gap-2">
+<span class="text-accent">PROJECT:</span> NEURAL_INTERFACE_V2
+                    </h1>
+<span class="text-[10px] text-slate-500 font-mono tracking-[0.2em] uppercase">Protocol: Secure • Latency: 12ms</span>
+</div>
+<span class="h-8 w-px bg-glass-border mx-2"></span>
+<div class="flex items-center gap-2 px-3 py-1 rounded border border-accent/20 bg-accent-dim">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+</span>
+<span class="text-xs font-mono text-accent uppercase tracking-wider">Deploying</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex -space-x-3 hover:space-x-1 transition-all duration-300">
+<img alt="Team member" class="w-9 h-9 rounded-lg border border-background-dark ring-2 ring-background-dark object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgbFYAeCYYIc3OVkxUQBsw4u6OcWglRW0JDY9jRKaPYyRytuTGKgc1aUHOYDEtX3FIVmZyIzMzDtC2VV9iG5oB98OkIbvPpXzwpc2xGP30EqzNcGZeCzP9yEXvLZCLGfa4WbJ5z1_PRKbEg-ioUORZzu7Hq8c5_9F_OffL2zbmL-Ir34dCm9KUN8ZK0lIeJRx09bny_XfFQhpy46ajCvarCK__Vbxcu-zn2dwH0NVO7cLqogAjxBR9qYXDkSS-xvpK5rPxvCD7TwKf" title="Alex Chen"/>
+<img alt="Team member" class="w-9 h-9 rounded-lg border border-background-dark ring-2 ring-background-dark object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPX5LYDPONIS4o2sFVvvkJbl0Tlj2jrE76_OilsOLZ1haSbEEf6NvK5NX34pRIGozNYNkLX4xdvLNnmW7b3YFMp0N6sjbra_YR9ClIMHeFQ62nWRKA0IEXawWLrmCtz7dYejpLypjXgY-oP5dHM4PRDDP19Dfj-dyglWSxrXFpakqtWE3eCyDKIMv_kGZgzPTdtrJGmDC8N4xTgs7w-VwzNLerVWlzJFioyXdhYCZo0iNKTKIaT8MW20olWjHzWXIAg-NeiuVL1OvE" title="Sarah Jenkins"/>
+<img alt="Team member" class="w-9 h-9 rounded-lg border border-background-dark ring-2 ring-background-dark object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8xG2zBgS4f01Sg9_dQ-GqXZc-Q1B9A9K9SaHq255KZa-bVbkqmp8wimQfIdzPL1vG73T9R8tnAlFJIIoYlilQWckh9Ok0hl7oUO3HiyKupzFDhS2ns5-rs8h0dzD2DyIFfRjmg8c3I__0pZQyiuzx26kuzeVH0QN-5bzani1gSnCiKRa0nOE-JE8lkCPgWGSvrguI24EDFoPl8YYsUD0Sqf9Bx9wA5SJ4BHagzFC6mQ6By-gdTFhohUoPxNt3OEhA_h4jwkBe97XR" title="Marcus Thorne"/>
+<div class="w-9 h-9 rounded-lg border border-background-dark ring-2 ring-background-dark bg-primary-lighter flex items-center justify-center text-xs font-mono font-bold text-accent">+3</div>
+</div>
+<button class="group bg-transparent border border-accent text-accent hover:bg-accent hover:text-background-dark font-mono text-xs px-4 py-2 rounded transition-all flex items-center gap-2 uppercase tracking-wide">
+<span class="material-symbols-outlined text-sm group-hover:animate-pulse">add_link</span> Invite
+                </button>
+</div>
+</header>
+<div class="flex-1 p-6 grid grid-cols-12 gap-6 overflow-hidden h-[calc(100vh-4rem)] z-10">
+<div class="col-span-3 flex flex-col gap-6 h-full overflow-hidden">
+<div class="glass-panel rounded-lg flex-1 flex flex-col overflow-hidden relative">
+<div class="h-1 w-full bg-gradient-to-r from-transparent via-accent to-transparent opacity-50"></div>
+<div class="flex items-center justify-between p-4 pb-2 border-b border-white/5">
+<h2 class="text-xs uppercase tracking-[0.15em] text-accent font-mono font-bold flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">ecg_heart</span> Team_Vitals
+                        </h2>
+<span class="text-[10px] font-mono text-slate-500 animate-pulse">LIVE_FEED</span>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-3 pr-2 scrollbar-thin">
+<div class="group p-3 rounded bg-primary/30 border border-white/5 hover:border-accent/40 hover:bg-primary/50 transition-all cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 right-0 w-8 h-8 bg-gradient-to-bl from-accent/10 to-transparent"></div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Sarah" class="w-9 h-9 rounded-sm object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOhvhVxoFqzMSVJjgFG1keul8TL26H3KyQrW_D0fD0R4Zv9TlWwdyHp0w6P9DdjaHUgKxkMW95qD5K33rH99rv-rij4HAp-jM3XKTPsdq5F0iwG1U4MEb7Ci6oVkgkc_7dPIXv9hZmgN-iPUNS98KjwG_uTVOmwecODa_0R2kdUNBMVwiSSvBoX7cFp0knAgfgZutmRg1J8AhE_P2p-vQD63j0OS-JCtSbgWYNDuhArsWDLFk5trWWPRRXQutVoICFgYBVLz7w_lLA"/>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-success shadow-[0_0_8px_rgba(0,255,157,0.8)] rounded-full border border-primary"></div>
+</div>
+<div>
+<h3 class="text-xs font-bold text-white font-mono tracking-wide">SARAH.J</h3>
+<p class="text-[10px] text-accent/60 font-mono">L5 Engineer</p>
+</div>
+</div>
+<span class="text-[10px] font-mono text-accent border border-accent/20 bg-accent/5 px-1.5 py-0.5 rounded">IDE_ACTIVE</span>
+</div>
+<div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono pl-1 border-l-2 border-slate-700">
+<span class="material-symbols-outlined text-[12px] text-slate-500">edit_note</span>
+<span>Modifying <span class="text-slate-200">auth_layer.rs</span></span>
+</div>
+</div>
+<div class="p-3 rounded bg-primary/20 border border-white/5 hover:border-white/10 transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="relative">
+<img alt="Davide" class="w-9 h-9 rounded-sm object-cover opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo-yfXyUBuDu4bz6sGMAwUmudGcMvEHy6x4ZFjJY23VMWU37hN1c0g8qKOPuw0W8L97BmLSoCQSQYZZed7V3Z8NrpErKZ2SnRExIVHzmaZwCyjbEjHBXHBXGGXZf3apd_d8McgZP5yCXgl1rwDPJLcw1bEut2fFymXa4QANQevu1eU2u6PCmD058o6UQ__5oH4WEIZ_2IlEH-mAMKh4eC92EgFT1rWy924w9CdguB0aZgvZgSqA1bTi6QasUor63SHEVBojvN8Cd5F"/>
+<div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-warning shadow-[0_0_8px_rgba(250,204,21,0.6)] rounded-full border border-primary"></div>
+</div>
+<div>
+<h3 class="text-xs font-bold text-slate-300 font-mono tracking-wide">MARCUS.T</h3>
+<p class="text-[10px] text-slate-500 font-mono">DevOps Lead</p>
+</div>
+</div>
+<span class="text-[10px] font-mono text-warning border border-warning/20 bg-warning/5 px-1.5 py-0.5 rounded">IN_MEETING</span>
+</div>
+<div class="flex items-center gap-2 text-[11px] text-slate-500 font-mono pl-1 border-l-2 border-slate-800">
+<span class="material-symbols-outlined text-[12px]">calendar_month</span>
+<span>Sprint Retro</span>
+</div>
+</div>
+<div class="p-3 rounded bg-blue-900/10 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-sm bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-400 text-sm">smart_toy</span>
+</div>
+<div>
+<h3 class="text-xs font-bold text-blue-200 font-mono tracking-wide">BUILD_BOT</h3>
+<p class="text-[10px] text-blue-400/60 font-mono">v4.2.0</p>
+</div>
+</div>
+<span class="text-[10px] font-mono text-blue-300 bg-blue-500/10 px-1.5 py-0.5 rounded animate-pulse">COMPILING</span>
+</div>
+<div class="h-1 w-full bg-primary-dark rounded-full overflow-hidden">
+<div class="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)] w-[75%]"></div>
+</div>
+<p class="text-[10px] text-blue-400/70 font-mono text-right mt-1">75% Complete</p>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-6 flex flex-col h-full overflow-hidden">
+<div class="glass-panel rounded-lg flex-1 flex flex-col shadow-2xl relative border-t-2 border-t-accent">
+<div class="p-3 border-b border-glass-border flex items-center justify-between bg-primary/40 backdrop-blur-md">
+<div class="flex gap-1 bg-primary-dark p-1 rounded-md border border-white/5">
+<button class="text-xs font-mono font-bold text-background-dark bg-accent px-3 py-1 rounded shadow-neon-inset transition-all">STREAM</button>
+<button class="text-xs font-mono font-medium text-slate-400 hover:text-white hover:bg-white/5 px-3 py-1 rounded transition-colors">LOGS</button>
+<button class="text-xs font-mono font-medium text-slate-400 hover:text-white hover:bg-white/5 px-3 py-1 rounded transition-colors">SECURITY</button>
+</div>
+<div class="flex items-center gap-2 px-2 py-1 bg-background-dark/50 rounded border border-white/5">
+<span class="w-1.5 h-1.5 bg-success shadow-[0_0_5px_#00ff9d] rounded-full animate-pulse"></span>
+<span class="text-[10px] text-slate-400 font-mono uppercase">Socket: Encrypted</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-5 font-mono text-sm bg-gradient-to-b from-transparent to-primary/20">
+<div class="flex items-center gap-4">
+<div class="h-px bg-glass-border flex-1"></div>
+<span class="text-[10px] text-slate-500 font-mono">TODAY</span>
+<div class="h-px bg-glass-border flex-1"></div>
+</div>
+<div class="flex gap-4 group opacity-80 hover:opacity-100 transition-opacity">
+<div class="w-14 text-[10px] text-slate-500 text-right pt-1 font-mono">10:42:05</div>
+<div class="flex-1 border-l border-slate-700 pl-4 relative">
+<div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-background-dark border border-slate-500 rounded-full"></div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[10px] bg-slate-800 text-slate-300 px-1 rounded font-bold border border-slate-600">SYS</span>
+<span class="text-[11px] text-slate-400">CI/CD Pipeline</span>
+</div>
+<div class="text-xs text-slate-300 bg-black/60 p-2.5 rounded border border-white/5 font-mono shadow-inner">
+<p class="text-slate-400">$ start_compilation --verbose</p>
+<p class="text-success mt-1">&gt; Module optimization complete [142ms]</p>
+<p class="text-warning">&gt; Warning: Deprecated dependency in package.json</p>
+</div>
+</div>
+</div>
+<div class="flex gap-4 group">
+<div class="w-14 text-[10px] text-accent text-right pt-1 font-mono">10:45:12</div>
+<div class="flex-1 border-l border-accent/30 pl-4 relative">
+<div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-background-dark border border-accent rounded-full shadow-[0_0_5px_rgba(0,240,255,0.5)]"></div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-accent font-bold text-xs font-mono">@SARAH.J</span>
+</div>
+<div class="bg-primary-light/50 backdrop-blur-sm p-3 rounded-lg border border-accent/10 text-slate-200 shadow-lg">
+<p class="text-xs leading-relaxed">Memory leak identified in the session handler. I'm seeing a spike in heap usage. Check line <span class="bg-accent/10 text-accent px-1 rounded font-mono border border-accent/20">45</span>.</p>
+</div>
+</div>
+</div>
+<div class="flex gap-4">
+<div class="w-14 text-[10px] text-slate-500 text-right pt-1 font-mono">10:48:30</div>
+<div class="flex-1 border-l border-slate-700 pl-4 relative">
+<div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-background-dark border border-purple-500 rounded-full"></div>
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-purple-400">webhook</span>
+<span class="text-[10px] text-purple-300/70 uppercase">GitHub Integration</span>
+</div>
+<div class="bg-[#0d1117] border border-purple-500/20 p-2 rounded flex items-center justify-between shadow-lg">
+<div class="flex items-center gap-3">
+<div class="text-purple-400">
+<span class="material-symbols-outlined text-sm">merge</span>
+</div>
+<div>
+<p class="text-slate-200 text-xs font-mono">PR <span class="text-white font-bold">#88</span> Merged</p>
+<p class="text-slate-500 text-[10px] font-mono">fix: api_timeout_handler</p>
+</div>
+</div>
+<div class="flex -space-x-2 mr-2">
+<img class="w-5 h-5 rounded-full border border-[#0d1117]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo-yfXyUBuDu4bz6sGMAwUmudGcMvEHy6x4ZFjJY23VMWU37hN1c0g8qKOPuw0W8L97BmLSoCQSQYZZed7V3Z8NrpErKZ2SnRExIVHzmaZwCyjbEjHBXHBXGGXZf3apd_d8McgZP5yCXgl1rwDPJLcw1bEut2fFymXa4QANQevu1eU2u6PCmD058o6UQ__5oH4WEIZ_2IlEH-mAMKh4eC92EgFT1rWy924w9CdguB0aZgvZgSqA1bTi6QasUor63SHEVBojvN8Cd5F"/>
+</div>
+</div>
+</div>
+</div>
+<div class="flex gap-4 group">
+<div class="w-14 text-[10px] text-slate-400 text-right pt-1 font-mono">10:52:01</div>
+<div class="flex-1 border-l border-slate-600 pl-4 relative">
+<div class="absolute -left-[5px] top-1.5 w-2.5 h-2.5 bg-background-dark border border-slate-400 rounded-full"></div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-slate-300 font-bold text-xs font-mono">@MARCUS.T</span>
+</div>
+<div class="bg-primary-lighter/30 backdrop-blur-sm p-3 rounded-lg border border-white/5 text-slate-300">
+<p class="text-xs font-mono">On it. Pulling the logs now. <span class="text-accent cursor-pointer hover:underline">@SARAH.J</span> can you send the heap snapshot?</p>
+</div>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-glass-border bg-background-dark/80 backdrop-blur-xl">
+<div class="relative flex items-center group">
+<div class="absolute left-3 text-slate-500 flex items-center gap-2 border-r border-slate-700 pr-3">
+<span class="material-symbols-outlined text-lg cursor-pointer hover:text-accent transition-colors">add_circle</span>
+<span class="material-symbols-outlined text-lg cursor-pointer hover:text-accent transition-colors">code</span>
+</div>
+<input class="w-full bg-[#0a0e14] border border-glass-border rounded-md pl-24 pr-12 py-3 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/50 font-mono transition-all shadow-inner" placeholder="Enter command or message..." type="text"/>
+<button class="absolute right-2 p-1.5 bg-accent/10 text-accent border border-accent/20 rounded hover:bg-accent hover:text-background-dark transition-all">
+<span class="material-symbols-outlined text-sm">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="col-span-3 flex flex-col gap-6 h-full">
+<div class="glass-panel rounded-lg p-5 shadow-lg h-1/3 flex flex-col relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2 opacity-50">
+<span class="material-symbols-outlined text-6xl text-white/5">speed</span>
+</div>
+<div class="flex justify-between items-start mb-4 z-10">
+<div>
+<h3 class="text-[10px] uppercase text-slate-500 font-bold tracking-[0.2em] mb-1">Velocity</h3>
+<div class="flex items-baseline gap-2">
+<span class="text-3xl font-mono text-white font-bold tracking-tight">84<span class="text-lg text-slate-500">%</span></span>
+<span class="text-[10px] font-mono text-success bg-success/10 px-1 rounded border border-success/20">▲ 12%</span>
+</div>
+</div>
+<div class="text-right">
+<h3 class="text-[10px] uppercase text-slate-500 font-bold tracking-[0.2em] mb-1">Deadline</h3>
+<p class="text-xl font-mono text-accent font-bold neon-text">T-3 DAYS</p>
+</div>
+</div>
+<div class="relative flex-1 w-full bg-black/20 rounded border border-white/5 overflow-hidden flex items-end px-0 pb-0">
+<div class="absolute inset-0 grid grid-cols-6 grid-rows-4 gap-0 pointer-events-none">
+<div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-slate-800/50"></div>
+<div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-slate-800/50"></div>
+<div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-r border-slate-800/50"></div><div class="border-b border-slate-800/50"></div>
+<div class="border-r border-slate-800/50"></div><div class="border-r border-slate-800/50"></div><div class="border-r border-slate-800/50"></div><div class="border-r border-slate-800/50"></div><div class="border-r border-slate-800/50"></div><div></div>
+</div>
+<svg class="w-full h-full z-10" preserveAspectRatio="none" viewBox="0 0 100 50">
+<path d="M0,45 L100,5" fill="none" stroke="#334155" stroke-dasharray="2,2" stroke-width="0.5"></path>
+<path class="drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]" d="M0,40 L15,35 L30,38 L45,25 L60,20 L80,15 L100,8" fill="none" stroke="#00f0ff" stroke-width="1.5"></path>
+<path d="M0,40 L15,35 L30,38 L45,25 L60,20 L80,15 L100,8 L100,50 L0,50 Z" fill="url(#gradient)" opacity="0.3"></path>
+<defs>
+<linearGradient id="gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#00f0ff" stop-opacity="0.5"></stop>
+<stop offset="100%" stop-color="#00f0ff" stop-opacity="0"></stop>
+</linearGradient>
+</defs>
+</svg>
+</div>
+<div class="grid grid-cols-3 gap-2 mt-3 text-[9px] text-slate-500 font-mono uppercase tracking-wider text-center">
+<div class="bg-primary/40 rounded p-1 border border-white/5">
+<div class="text-danger font-bold text-xs">12</div>
+                            BUGS
+                        </div>
+<div class="bg-primary/40 rounded p-1 border border-white/5">
+<div class="text-white font-bold text-xs">04</div>
+                            OPEN PRs
+                        </div>
+<div class="bg-primary/40 rounded p-1 border border-white/5">
+<div class="text-success font-bold text-xs">99.9%</div>
+                            UPTIME
+                        </div>
+</div>
+</div>
+<div class="glass-panel rounded-lg flex-1 flex flex-col shadow-lg overflow-hidden border border-accent/20 group hover:shadow-[0_0_30px_rgba(0,240,255,0.1)] transition-shadow">
+<div class="bg-[#0d1117] px-3 py-2 flex items-center justify-between border-b border-white/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-xs text-accent">code</span>
+<span class="text-xs font-mono text-slate-400">src/auth/session.ts</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-2 h-2 rounded-full bg-slate-700"></div>
+<div class="w-2 h-2 rounded-full bg-slate-700"></div>
+</div>
+</div>
+<div class="flex-1 bg-[#0d1117] p-0 overflow-hidden relative font-mono text-xs">
+<div class="absolute inset-0 flex">
+<div class="w-10 bg-[#0d1117] border-r border-slate-800 flex flex-col items-end pr-2 pt-3 text-slate-600 select-none">
+<div>42</div>
+<div>43</div>
+<div>44</div>
+<div class="text-accent font-bold">45</div>
+<div>46</div>
+<div>47</div>
+<div>48</div>
+<div>49</div>
+<div>50</div>
+<div>51</div>
+</div>
+<div class="flex-1 p-3 pl-4 text-slate-400 overflow-x-auto">
+<div class="leading-relaxed whitespace-pre font-mono"><span class="text-purple-400">export</span> <span class="text-purple-400">async</span> <span class="text-blue-400 italic">function</span> <span class="text-blue-300">authenticateUser</span>(ctx) {
+  <span class="text-slate-600 italic">// Check redis cache first</span>
+<span class="text-purple-400">const</span> cache = <span class="text-purple-400">await</span> redis.<span class="text-blue-300">get</span>(ctx.id);
+<div class="bg-accent/10 -mx-4 px-4 border-l-2 border-accent relative"><span class="absolute right-2 top-0.5 text-[9px] text-accent opacity-50"># BUG_REPORT</span> <span class="text-purple-400">if</span> (!cache || cache.expired) {</div>
+<span class="text-slate-600 italic">// TODO: Optimize DB query</span>
+<span class="text-purple-400">const</span> user = <span class="text-purple-400">await</span> db.<span class="text-blue-300">findUser</span>(ctx.id);
+    <span class="text-purple-400">return</span> session.<span class="text-blue-300">create</span>(user);
+  }
+  <span class="text-purple-400">return</span> JSON.<span class="text-blue-300">parse</span>(cache);
+}</div>
+<div class="w-2 h-4 bg-accent/50 inline-block cursor-blink mt-1"></div>
+</div>
+</div>
+<div class="absolute inset-0 bg-primary/90 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3">
+<span class="text-accent font-mono text-xs tracking-widest mb-2 border-b border-accent pb-1">SANDBOX_ENVIRONMENT</span>
+<div class="flex gap-3">
+<button class="bg-accent text-background-dark text-xs font-bold font-mono px-4 py-2 rounded shadow-lg hover:bg-white transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">edit</span> LIVE EDIT
+                                </button>
+<button class="bg-transparent border border-white/30 text-white text-xs font-bold font-mono px-4 py-2 rounded shadow-lg hover:bg-white/10 transition-all">
+                                    GIT BLAME
+                                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Placeholder for any non-functional logic if strictly needed, but kept minimal.
+    </script>
+
+</body></html>
