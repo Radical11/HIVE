@@ -5,15 +5,41 @@ from django.conf import settings
 from users.models import User, UserProfile
 
 # Initialize Firebase Admin SDK (uses default credentials or service account)
+import os
+
+# Initialize Firebase Admin SDK (uses default credentials or service account)
 if not firebase_admin._apps:
-    # In production, use a service account JSON file:
-    # cred = credentials.Certificate('path/to/serviceAccountKey.json')
-    # firebase_admin.initialize_app(cred)
-    #
-    # For dev, use Application Default Credentials or just project ID:
-    firebase_admin.initialize_app(options={
-        'projectId': 'hive-ecee0',
-    })
+    try:
+        # 1. Check for explicit service account in env (production/staging)
+        if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+            cred = credentials.ApplicationDefault()
+            firebase_admin.initialize_app(cred, {'projectId': 'hive-ecee0'})
+        else:
+            # 2. Local dev fallback: Use a mock credential to bypass ADC search.
+            # This allows the app to initialize so verify_id_token can work (it only needs public keys).
+            # We import here to avoid dependency issues if google-auth not installed (though it should be)
+            from google.auth import credentials as google_credentials
+            
+            class MockProjectCredential(google_credentials.Credentials):
+                def refresh(self, request):
+                    self.token = "mock-token"
+                    self.expiry = None
+                
+                def before_request(self, request, method, url, headers):
+                    pass # Do not add auth headers
+
+            cred = MockProjectCredential()
+            firebase_admin.initialize_app(cred, {'projectId': 'hive-ecee0'})
+            print("Firebase Admin initialized with Mock Credentials (Local Dev Mode)")
+            
+    except Exception as e:
+        # Fallback for any initialization error
+        print(f"Firebase Init Warning: {e}")
+        try:
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app(options={'projectId': 'hive-ecee0'})
+        except Exception:
+            pass
 
 
 class FirebaseAuthentication(authentication.BaseAuthentication):
@@ -35,13 +61,41 @@ class FirebaseAuthentication(authentication.BaseAuthentication):
         token = parts[1]
 
         try:
+            # Try verification with Admin SDK (requires credentials for signature check vs local keys)
             decoded = firebase_auth.verify_id_token(token)
-        except firebase_auth.InvalidIdTokenError:
-            raise exceptions.AuthenticationFailed('Invalid Firebase ID token.')
-        except firebase_auth.ExpiredIdTokenError:
-            raise exceptions.AuthenticationFailed('Firebase ID token has expired.')
-        except Exception as e:
-            raise exceptions.AuthenticationFailed(f'Firebase auth error: {str(e)}')
+        except (ValueError, Exception) as e:
+            # Fallback: Verify via REST API if Admin SDK fails (e.g., missing local credentials)
+            # This is slower (network call) but works without setup.
+            try:
+                import json
+                import urllib.request
+                from urllib.error import HTTPError
+                
+                # Check token validity with Google
+                # Using tokeninfo endpoint which is public and doesn't need auth
+                req = urllib.request.Request(f"https://oauth2.googleapis.com/tokeninfo?id_token={token}")
+                try:
+                    with urllib.request.urlopen(req) as response:
+                        decoded = json.loads(response.read().decode())
+                except HTTPError as e:
+                    if e.code == 400:
+                        raise exceptions.AuthenticationFailed('Invalid Firebase ID token.')
+                    raise
+                
+                # Check audience
+                if decoded.get('aud') != 'hive-ecee0':
+                     raise exceptions.AuthenticationFailed('Token audience mismatch')
+                
+                # Map 'sub' to 'uid' to match SDK format
+                decoded['uid'] = decoded['sub']
+                
+            except exceptions.AuthenticationFailed:
+                raise
+            except Exception as fallback_err:
+                 # If both fail, log the original error but maybe return a simple 'Invalid token' to client
+                 # unless it's a configuration error.
+                print(f"Auth Error: SDK={str(e)}, REST={str(fallback_err)}")
+                raise exceptions.AuthenticationFailed('Authentication failed.')
 
         # JIT user provisioning
         uid = decoded.get('uid')

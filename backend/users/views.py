@@ -171,25 +171,54 @@ class GitHubWebhookView(APIView):
             except Repository.DoesNotExist:
                 return Response({'message': f'Repo {repo_full_name} not active or not found'}, status=status.HTTP_200_OK)
 
-            created_count = 0
+            # Aggregate commits for a single post
+            if not commits:
+                return Response({'message': 'No commits to process'}, status=status.HTTP_200_OK)
+
+            # Get the head commit (the most recent one, which describes the state)
+            head_commit = commits[-1]
+            head_message = head_commit.get('message', '')
+            
+            # Construct a "file diff" summary for the code snippet
+            # We don't have the actual diff, but we have lists of added/removed/modified files
+            diff_summary = f"// {len(commits)} commits to {repo_full_name}\n"
+            
+            file_changes = []
             for commit in commits:
-                message = commit.get('message')
-                url = commit.get('url')
-                commit_id = commit.get('id')[:7]
+                for f in commit.get('added', []):
+                    file_changes.append(f"+ {f}")
+                for f in commit.get('removed', []):
+                    file_changes.append(f"- {f}")
+                for f in commit.get('modified', []):
+                    file_changes.append(f"M {f}")
+            
+            # Limit file changes to 10 lines to fit nicely in the snippet box
+            unique_changes = list(set(file_changes))[:10]
+            if len(file_changes) > 10:
+                unique_changes.append(f"... and {len(file_changes) - 10} more files")
                 
-                # Use default description if set, otherwise just commit message
-                intro = repo_obj.default_description if repo_obj.default_description else f"🚀 Pushed to {repo_full_name}"
-                content = f"{intro}\n\n**Commit:** {message}\n[View Commit]({url})"
+            code_snippet = diff_summary + "\n".join(unique_changes)
+
+            # Content: nicer informative message
+            # If the user has a long commit message, split it. Title is first line.
+            msg_lines = head_message.split('\n')
+            title = msg_lines[0]
+            body = "\n".join(msg_lines[1:]).strip()
+            
+            # If body is empty, we can generate a generic one based on file extensions maybe? 
+            # Or just leave it clean. The user wants the "Sarah_dev type post".
+            # Let's just use the commit message.
+            
+            post_content = head_message
+            
+            Post.objects.create(
+                author=user,
+                content=post_content,
+                type='GITHUB_COMMIT',
+                code_snippet=code_snippet
+            )
                 
-                Post.objects.create(
-                    author=user,
-                    content=content,
-                    type='GITHUB_COMMIT',
-                    code_snippet=f"Repo: {repo_full_name}\nCommit: {commit_id}"
-                )
-                created_count += 1
-                
-            return Response({'message': f'Processed {created_count} commits for {repo_full_name}'}, status=status.HTTP_200_OK)
+            return Response({'message': f'Processed {len(commits)} commits for {repo_full_name}'}, status=status.HTTP_200_OK)
 
         elif event_type in ['installation', 'installation_repositories']:
             action = payload.get('action')
