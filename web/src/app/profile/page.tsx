@@ -1,167 +1,345 @@
 "use client";
 
-import { useState } from "react";
-import { MapPin, Link2, Edit, Users as UsersIcon, Flame } from "lucide-react";
-import { users } from "@/lib/data";
-import Heatmap from "@/components/Heatmap";
-import RadarChart from "@/components/RadarChart";
+import { useState, useEffect } from "react";
+import {
+    GitCommit, Star, GitFork, ExternalLink, Calendar, Layout, Trophy, Flame, MapPin, Globe,
+} from "lucide-react";
+import {
+    getMe, getGitHubProfile, getGitHubRepos, LANG_COLORS,
+    ApiUser, GitHubProfile, GitHubRepo,
+} from "@/lib/api";
+import { users as mockUsers } from "@/lib/data";
+import { useAuth } from "@/contexts/AuthContext";
 import PageWrapper from "@/components/PageWrapper";
 
 export default function ProfilePage() {
-    const user = users[0];
-    const [yearContributions] = useState(() =>
-        Array.from({ length: 365 }, () =>
-            Math.random() > 0.3 ? Math.floor(Math.random() * 12) : 0
-        )
-    );
-    const activeCount = yearContributions.filter((v) => v > 0).length;
+    const { firebaseUser, hiveUser } = useAuth();
+    const isAuthenticated = !!firebaseUser;
 
-    const languages = [
-        { name: "Rust", pct: 45, color: "#dea584" },
-        { name: "TypeScript", pct: 30, color: "#3178c6" },
-        { name: "Python", pct: 15, color: "#3572A5" },
-        { name: "Go", pct: 10, color: "#00ADD8" },
-    ];
+    const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
+    const [ghProfile, setGhProfile] = useState<GitHubProfile | null>(null);
+    const [ghRepos, setGhRepos] = useState<GitHubRepo[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const pinnedProjects = [
-        { name: "DL_PyTorch", desc: "Deep Learning using PyTorch", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
-        { name: "Machine-Learning", desc: "", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
-        { name: "NLP-and-Speech", desc: "Code for various NLP and Speech Task", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
-        { name: "Reinforcement-Learning", desc: "", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
-        { name: "flag_count", desc: "", lang: "Python", langColor: "#3572A5" },
-    ];
+    // Mock user for demo mode
+    const demoUser = mockUsers[0];
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+
+        (async () => {
+            try {
+                const me = await getMe();
+                setProfileUser(me);
+
+                // If user has a GitHub handle, fetch stats from GitHub API
+                if (me.profile?.github_handle) {
+                    const [profile, repos] = await Promise.all([
+                        getGitHubProfile(me.profile.github_handle).catch(() => null),
+                        getGitHubRepos(me.profile.github_handle).catch(() => []),
+                    ]);
+                    if (profile) setGhProfile(profile);
+                    setGhRepos(repos);
+                }
+            } catch {
+                // Fall back to demo mode
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [isAuthenticated]);
+
+    // Compute language stats from repos
+    const langStats: Record<string, number> = {};
+    ghRepos.forEach((repo) => {
+        if (repo.language) {
+            langStats[repo.language] = (langStats[repo.language] || 0) + 1;
+        }
+    });
+    const topLanguages = Object.entries(langStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+    const totalLangRepos = topLanguages.reduce((s, [, c]) => s + c, 0);
+
+    // Values for display (real or mock)
+    const displayName = profileUser
+        ? `${profileUser.first_name} ${profileUser.last_name}`.trim() || profileUser.username
+        : demoUser.name;
+    const displayHandle = profileUser?.profile?.github_handle || profileUser?.username || demoUser.username;
+    const displayHeadline = profileUser?.profile?.headline || demoUser.role;
+    const displayBio = profileUser?.profile?.bio || "Building the future with code. Full-stack developer passionate about clean architecture and open source.";
+    const displayAvatar = profileUser?.profile?.avatar_url || firebaseUser?.photoURL || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${demoUser.username}`;
 
     return (
         <PageWrapper theme="crimson">
-            <div className="max-w-full mx-auto px-6 py-6">
-                <div className="flex gap-10">
-                    {/* Left — Avatar & Info */}
-                    <div className="w-72 shrink-0">
-                        <div className="sticky top-20">
-                            <div className="relative mb-4">
-                                <img
-                                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.username}`}
-                                    alt={user.username}
-                                    className="w-48 h-48 rounded-full border-4 border-border-primary mx-auto"
-                                />
-                                <div className="absolute bottom-2 right-12 w-4 h-4 rounded-full bg-success border-2 border-bg-void online-dot" />
-                            </div>
-
-                            <h1 className="text-xl font-bold text-text-primary uppercase tracking-tight">{user.name}</h1>
-                            <p className="text-sm text-text-muted font-mono mb-1">{user.username}</p>
-                            <p className="text-xs text-text-muted leading-relaxed mb-4">{user.bio}</p>
-
-                            <button className="btn-outline w-full flex items-center justify-center gap-2 mb-4 py-2">
-                                <Edit size={13} /> Edit Profile
-                            </button>
-
-                            <div className="flex items-center gap-3 mb-3">
-                                <UsersIcon size={13} className="text-text-faint" />
-                                <span className="text-xs text-text-secondary"><strong>43</strong> followers</span>
-                                <span className="text-xs text-text-faint">·</span>
-                                <span className="text-xs text-text-secondary"><strong>12</strong> following</span>
-                            </div>
-
-                            <div className="space-y-1.5 text-xs text-text-muted">
-                                <div className="flex items-center gap-2"><MapPin size={12} className="text-text-faint" /> Addis Ababa, Ethiopia</div>
-                                <div className="flex items-center gap-2"><Link2 size={12} className="text-text-faint" /> <a href="#" className="text-accent hover:underline">haileb.com</a></div>
-                            </div>
-                        </div>
+            <div className="w-full px-8 py-6">
+                {loading ? (
+                    <div className="flex items-center justify-center py-20">
+                        <div className="animate-spin w-8 h-8 border-2 border-accent border-t-transparent rounded-full" />
                     </div>
+                ) : (
+                    <div className="flex gap-6">
+                        {/* Left — Profile Card */}
+                        <div className="w-[300px] shrink-0 hidden lg:block">
+                            <div className="card p-6 sticky top-20">
+                                <div className="text-center mb-5">
+                                    <img
+                                        src={displayAvatar}
+                                        alt={displayName}
+                                        className="w-24 h-24 rounded-full border-2 border-border-primary mx-auto mb-3 object-cover"
+                                    />
+                                    <h2 className="text-lg font-bold text-text-primary">{displayName}</h2>
+                                    <p className="text-sm text-accent">@{displayHandle}</p>
+                                    <p className="text-xs text-text-muted mt-2">{displayHeadline}</p>
+                                </div>
+                                <p className="text-sm text-text-muted mb-5 text-center">{displayBio}</p>
 
-                    {/* Right — Content */}
-                    <div className="flex-1 min-w-0">
-                        {/* Heatmap */}
-                        <div className="card p-5 mb-6">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm text-text-secondary">{activeCount} contributions in the last year</h3>
-                                <button className="text-[10px] text-text-faint hover:text-accent transition-colors">Contribution settings ↗</button>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <Heatmap contributions={yearContributions} cellSize={11} gap={2} />
-                            </div>
-                            <div className="flex items-center gap-2 mt-3 justify-end">
-                                <span className="text-[9px] text-text-faint">Less</span>
-                                {[0.08, 0.2, 0.4, 0.65, 0.9].map((o, i) => (
-                                    <div key={`hm-${i}`} className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `rgba(46, 160, 67, ${o})` }} />
-                                ))}
-                                <span className="text-[9px] text-text-faint">More</span>
-                            </div>
-                        </div>
-
-                        {/* Pinned Projects */}
-                        <div className="mb-6">
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-medium text-text-secondary">Pinned Projects</h3>
-                                <button className="text-[10px] text-text-faint hover:text-accent transition-colors">Customize your pins</button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                {pinnedProjects.map((p, i) => (
-                                    <div key={`pin-${i}`} className="card p-4 hover:border-border-hover transition-colors cursor-pointer">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <h4 className="text-sm font-semibold text-accent">{p.name}</h4>
-                                            <span className="text-text-faint text-lg">📋</span>
+                                {/* Quick stats */}
+                                <div className="grid grid-cols-2 gap-2 mb-5">
+                                    <div className="p-3 bg-bg-surface-alt rounded-lg text-center">
+                                        <div className="text-lg font-bold text-text-primary">
+                                            {profileUser?.profile?.current_streak ?? demoUser.stats.currentStreak}
                                         </div>
-                                        {p.desc && <p className="text-xs text-text-faint mb-2">{p.desc}</p>}
-                                        <div className="flex items-center gap-1.5 mt-auto">
-                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.langColor }} />
-                                            <span className="text-[10px] text-text-muted">{p.lang}</span>
+                                        <div className="text-xs text-text-faint flex items-center justify-center gap-1">
+                                            <Flame size={12} /> Streak
                                         </div>
                                     </div>
-                                ))}
+                                    <div className="p-3 bg-bg-surface-alt rounded-lg text-center">
+                                        <div className="text-lg font-bold text-text-primary">
+                                            {profileUser?.profile?.elo_rating ?? demoUser.stats.reputation}
+                                        </div>
+                                        <div className="text-xs text-text-faint flex items-center justify-center gap-1">
+                                            <Trophy size={12} /> ELO
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-bg-surface-alt rounded-lg text-center">
+                                        <div className="text-lg font-bold text-text-primary">
+                                            {profileUser?.profile?.total_xp ?? demoUser.stats.totalCommits}
+                                        </div>
+                                        <div className="text-xs text-text-faint flex items-center justify-center gap-1">
+                                            <Star size={12} /> XP
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-bg-surface-alt rounded-lg text-center">
+                                        <div className="text-lg font-bold text-text-primary">
+                                            {ghProfile?.public_repos ?? demoUser.stats.problemsSolved}
+                                        </div>
+                                        <div className="text-xs text-text-faint flex items-center justify-center gap-1">
+                                            <Layout size={12} /> Repos
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* GitHub links */}
+                                {ghProfile && (
+                                    <div className="border-t border-border-primary pt-4 space-y-2">
+                                        <div className="flex items-center gap-2 text-text-muted text-sm">
+                                            <Globe size={14} />
+                                            <a href={ghProfile.html_url} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
+                                                {ghProfile.html_url}
+                                            </a>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-text-faint text-sm">
+                                            <span><strong className="text-text-secondary">{ghProfile.followers}</strong> followers</span>
+                                            <span><strong className="text-text-secondary">{ghProfile.following}</strong> following</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Bottom Row */}
-                        <div className="grid grid-cols-3 gap-4">
-                            {/* Radar */}
-                            <div className="card p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider">Performance Radar</h4>
-                                    <button className="text-[10px] text-accent hover:underline">View Details</button>
+                        {/* Center — Content */}
+                        <div className="flex-1 min-w-0 space-y-6">
+                            {/* Contribution Heatmap placeholder */}
+                            <div className="card p-6">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <Calendar size={14} /> Contribution Activity
+                                </h3>
+                                <div className="bg-bg-surface-alt rounded-lg p-4">
+                                    <div className="grid grid-cols-[repeat(52,1fr)] gap-[3px]">
+                                        {Array.from({ length: 364 }).map((_, i) => {
+                                            const random = Math.random();
+                                            const level = random < 0.4 ? 0 : random < 0.65 ? 1 : random < 0.8 ? 2 : random < 0.92 ? 3 : 4;
+                                            const colors = ["bg-[#161b22]", "bg-accent/20", "bg-accent/40", "bg-accent/60", "bg-accent/80"];
+                                            return <div key={i} className={`aspect-square rounded-[2px] ${colors[level]}`} />;
+                                        })}
+                                    </div>
+                                    <div className="flex items-center justify-end gap-2 mt-3">
+                                        <span className="text-[10px] text-text-faint">Less</span>
+                                        {["bg-[#161b22]", "bg-accent/20", "bg-accent/40", "bg-accent/60", "bg-accent/80"].map((c, i) => (
+                                            <div key={i} className={`w-3 h-3 rounded-[2px] ${c}`} />
+                                        ))}
+                                        <span className="text-[10px] text-text-faint">More</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-center">
-                                    <RadarChart data={user.techStack} size={140} />
-                                </div>
-                                <p className="text-[10px] text-text-faint text-center mt-2">
-                                    Performing better than <strong className="text-text-secondary">94%</strong> of Backend Engineers.
-                                </p>
                             </div>
 
-                            {/* Languages */}
-                            <div className="card p-4">
-                                <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Top Languages</h4>
-                                <div className="space-y-3">
-                                    {languages.map((lang) => (
-                                        <div key={`lang-${lang.name}`}>
-                                            <div className="flex items-center justify-between mb-1">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lang.color }} />
-                                                    <span className="text-xs text-text-secondary">{lang.name}</span>
+                            {/* Pinned / Top Repos */}
+                            <div className="card p-6">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <GitFork size={14} /> {ghRepos.length > 0 ? "Recent Repositories" : "Pinned Projects"}
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {(ghRepos.length > 0 ? ghRepos : demoUser.githubData.topRepos.map((repoName: string, idx: number) => ({
+                                        id: idx,
+                                        name: repoName,
+                                        full_name: repoName,
+                                        description: "Open source project",
+                                        html_url: "#",
+                                        language: ["TypeScript", "Python", "Rust"][idx % 3],
+                                        stargazers_count: Math.floor(Math.random() * 500),
+                                        forks_count: Math.floor(Math.random() * 100),
+                                        updated_at: "",
+                                    }))).map((repo: { id: number | string; name: string; full_name: string; description: string | null; html_url: string; language: string | null; stargazers_count: number; forks_count: number; updated_at: string }) => (
+                                        <a
+                                            key={repo.id}
+                                            href={repo.html_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-4 bg-bg-surface-alt rounded-lg border border-border-subtle hover:border-accent transition-colors group"
+                                        >
+                                            <div className="flex items-start justify-between mb-2">
+                                                <span className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors truncate">
+                                                    {repo.name}
+                                                </span>
+                                                <ExternalLink size={12} className="text-text-faint opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-2" />
+                                            </div>
+                                            <p className="text-xs text-text-muted mb-3 line-clamp-2">
+                                                {repo.description || "No description"}
+                                            </p>
+                                            <div className="flex items-center gap-3">
+                                                {repo.language && (
+                                                    <div className="flex items-center gap-1">
+                                                        <span
+                                                            className="w-2.5 h-2.5 rounded-full"
+                                                            style={{ backgroundColor: LANG_COLORS[repo.language] || "#666" }}
+                                                        />
+                                                        <span className="text-xs text-text-faint">{repo.language}</span>
+                                                    </div>
+                                                )}
+                                                <div className="flex items-center gap-1 text-text-faint">
+                                                    <Star size={11} />
+                                                    <span className="text-xs">{repo.stargazers_count}</span>
                                                 </div>
-                                                <span className="text-[10px] text-text-faint font-mono">{lang.pct}%</span>
+                                                <div className="flex items-center gap-1 text-text-faint">
+                                                    <GitFork size={11} />
+                                                    <span className="text-xs">{repo.forks_count}</span>
+                                                </div>
                                             </div>
-                                            <div className="h-1.5 bg-bg-surface-alt rounded-full overflow-hidden">
-                                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${lang.pct}%`, backgroundColor: lang.color }} />
-                                            </div>
-                                        </div>
+                                        </a>
                                     ))}
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Streak */}
-                            <div className="card p-4 flex flex-col items-center justify-center text-center relative">
-                                <div className="absolute top-3 right-3 text-text-faint">
-                                    <Flame size={14} />
+                        {/* Right — Languages + More */}
+                        <div className="w-[280px] shrink-0 hidden xl:block">
+                            <div className="sticky top-20 space-y-5">
+                                {/* Top Languages */}
+                                <div className="card p-6">
+                                    <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Top Languages</h3>
+                                    {topLanguages.length > 0 ? (
+                                        <>
+                                            {/* Bar */}
+                                            <div className="h-3 rounded-full overflow-hidden flex mb-4">
+                                                {topLanguages.map(([lang, count]) => (
+                                                    <div
+                                                        key={lang}
+                                                        style={{
+                                                            width: `${(count / totalLangRepos) * 100}%`,
+                                                            backgroundColor: LANG_COLORS[lang] || "#666",
+                                                        }}
+                                                        title={`${lang}: ${count} repos`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <div className="space-y-2">
+                                                {topLanguages.map(([lang, count]) => (
+                                                    <div key={lang} className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span
+                                                                className="w-3 h-3 rounded-full"
+                                                                style={{ backgroundColor: LANG_COLORS[lang] || "#666" }}
+                                                            />
+                                                            <span className="text-sm text-text-secondary">{lang}</span>
+                                                        </div>
+                                                        <span className="text-sm text-text-faint font-mono">
+                                                            {((count / totalLangRepos) * 100).toFixed(1)}%
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="h-3 rounded-full overflow-hidden flex mb-4">
+                                                {[
+                                                    { pct: 42, color: "#3178c6" },
+                                                    { pct: 28, color: "#3572A5" },
+                                                    { pct: 18, color: "#dea584" },
+                                                    { pct: 12, color: "#00ADD8" },
+                                                ].map((l, i) => (
+                                                    <div key={i} style={{ width: `${l.pct}%`, backgroundColor: l.color }} />
+                                                ))}
+                                            </div>
+                                            <div className="space-y-2">
+                                                {[
+                                                    { lang: "TypeScript", pct: 42 },
+                                                    { lang: "Python", pct: 28 },
+                                                    { lang: "Rust", pct: 18 },
+                                                    { lang: "Go", pct: 12 },
+                                                ].map((l) => (
+                                                    <div key={l.lang} className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: LANG_COLORS[l.lang] }} />
+                                                            <span className="text-sm text-text-secondary">{l.lang}</span>
+                                                        </div>
+                                                        <span className="text-sm text-text-faint font-mono">{l.pct}%</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
-                                <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Current Streak</h4>
-                                <div className="text-3xl font-bold text-accent">{user.stats.currentStreak}</div>
-                                <div className="text-sm font-medium text-text-secondary">Days</div>
-                                <p className="text-[10px] text-text-faint mt-2">About 6 out of 8 days to 50.</p>
+
+                                {/* Badges */}
+                                <div className="card p-6">
+                                    <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Achievements</h3>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {["🔥", "🏆", "⚡", "🎯", "💎", "🌟"].map((badge, i) => (
+                                            <div
+                                                key={i}
+                                                className="aspect-square rounded-xl bg-bg-surface-alt flex items-center justify-center text-2xl border border-border-subtle hover:border-accent transition-colors cursor-pointer hover:scale-105 active:scale-95"
+                                            >
+                                                {badge}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* GitHub Connect button for users without GitHub */}
+                                {isAuthenticated && !profileUser?.profile?.github_handle && (
+                                    <div className="card p-6 text-center">
+                                        <p className="text-sm text-text-muted mb-3">Connect your GitHub to see real stats</p>
+                                        <button
+                                            onClick={() => {
+                                                const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
+                                                const redirectUri = `${window.location.origin}/api/auth/callback/github`;
+                                                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user:email`;
+                                            }}
+                                            className="btn-primary py-2 px-5 text-sm"
+                                        >
+                                            Connect GitHub
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
         </PageWrapper>
     );

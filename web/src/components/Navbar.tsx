@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
-    Rss, Users, FolderCode, Swords, User, Search, MoreHorizontal, Bell,
+    Rss, Users, FolderCode, Swords, User, Search, MoreHorizontal, Bell, LogOut,
 } from "lucide-react";
-import { users } from "@/lib/data";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* 
  * Each nav item has its OWN theme color so the active state
@@ -22,11 +22,25 @@ const navItems = [
 
 export default function Navbar() {
     const pathname = usePathname();
-    const currentUser = users[0];
+    const router = useRouter();
+    const { firebaseUser, hiveUser, logout } = useAuth();
     const [searchQuery, setSearchQuery] = useState("");
 
     // Hide navbar on auth pages
-    if (pathname === "/login" || pathname === "/register") return null;
+    if (pathname === "/login" || pathname === "/register" || pathname.startsWith("/api/auth")) return null;
+
+    const displayName = hiveUser
+        ? `${hiveUser.first_name || ""} ${hiveUser.last_name || ""}`.trim() || hiveUser.username
+        : firebaseUser?.displayName || "User";
+
+    const avatarUrl = hiveUser?.profile?.avatar_url
+        || firebaseUser?.photoURL
+        || `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${hiveUser?.username || "default"}`;
+
+    const handleLogout = async () => {
+        await logout();
+        router.push("/login");
+    };
 
     return (
         <header className="fixed top-0 left-0 right-0 h-14 bg-bg-surface border-b border-border-primary z-50 flex items-center px-6">
@@ -93,15 +107,28 @@ export default function Navbar() {
                 {/* User */}
                 <Link href="/profile" className="flex items-center gap-2.5 hover:bg-bg-surface-alt rounded-lg px-2 py-1.5 transition-colors">
                     <img
-                        src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${currentUser.username}`}
-                        alt={currentUser.username}
-                        className="w-8 h-8 rounded-full border border-border-primary"
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="w-8 h-8 rounded-full border border-border-primary object-cover"
                     />
                     <div className="hidden md:block">
-                        <div className="text-xs font-semibold text-text-primary leading-tight">{currentUser.name.split(" ")[0].toUpperCase()} {currentUser.name.split(" ")[1]?.toUpperCase()}</div>
-                        <div className="text-[10px] text-text-faint">Followers · 43</div>
+                        <div className="text-xs font-semibold text-text-primary leading-tight">{displayName.toUpperCase()}</div>
+                        <div className="text-[10px] text-text-faint">
+                            {hiveUser?.profile?.current_streak ? `Streak · ${hiveUser.profile.current_streak}d 🔥` : "Welcome!"}
+                        </div>
                     </div>
                 </Link>
+
+                {/* Logout */}
+                {firebaseUser && (
+                    <button
+                        onClick={handleLogout}
+                        className="w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-bg-surface-alt hover:text-error transition-colors active:scale-95"
+                        title="Logout"
+                    >
+                        <LogOut size={16} />
+                    </button>
+                )}
 
                 {/* Settings */}
                 <Link href="/settings" className="w-9 h-9 rounded-lg flex items-center justify-center text-text-muted hover:bg-bg-surface-alt hover:text-[#4ecdc4] transition-colors active:scale-95">
