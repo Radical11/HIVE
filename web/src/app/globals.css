@@ -1,140 +1,310 @@
 @import "tailwindcss";
 
-/* === HIVE NEON-NOIR DESIGN SYSTEM === */
-
 :root {
-  /* Core palette */
-  --hive-bg-primary: #0a0a0f;
-  --hive-bg-secondary: #12121a;
-  --hive-bg-card: #1a1a2e;
-  --hive-bg-card-hover: #222240;
-  --hive-bg-elevated: #16213e;
+  /* ===== Deep Black Palette ===== */
+  --bg-void: #050505;
+  --bg-primary: #0a0a0b;
+  --bg-surface: #111113;
+  --bg-surface-alt: #19191c;
+  --bg-elevated: #222226;
+  --border-primary: #1e1e22;
+  --border-subtle: #161618;
+  --border-hover: #2a2a2e;
+  --text-primary: #e8eaed;
+  --text-secondary: #c9d1d9;
+  --text-muted: #8b949e;
+  --text-faint: #484f58;
+  --error: #f85149;
+  --warning: #d29922;
+  --success: #2ea043;
 
-  /* Text */
-  --hive-text-primary: #e8e8f0;
-  --hive-text-secondary: #9898b0;
-  --hive-text-muted: #5a5a7a;
+  /* ===== Chameleon Theme (Default: Teal) ===== */
+  --accent: #4ecdc4;
+  --accent-hover: #5ee0d7;
+  --accent-dim: rgba(78, 205, 196, 0.08);
+  --accent-glow: rgba(78, 205, 196, 0.03);
 
-  /* Accents */
-  --hive-accent-primary: #00d4ff;
-  --hive-accent-secondary: #7c3aed;
-  --hive-accent-success: #10b981;
-  --hive-accent-warning: #f59e0b;
-  --hive-accent-danger: #ef4444;
-  --hive-accent-fire: #f97316;
+  /* ===== Page Themes ===== */
+  --theme-emerald: #10b981;
+  --theme-emerald-dim: rgba(16, 185, 129, 0.08);
+  --theme-emerald-glow: rgba(16, 185, 129, 0.04);
 
-  /* Gradients */
-  --hive-gradient-primary: linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%);
-  --hive-gradient-card: linear-gradient(145deg, rgba(26,26,46,0.8), rgba(22,33,62,0.4));
-  --hive-gradient-hero: linear-gradient(180deg, #0a0a0f 0%, #16213e 50%, #0a0a0f 100%);
+  --theme-violet: #8b5cf6;
+  --theme-violet-dim: rgba(139, 92, 246, 0.08);
+  --theme-violet-glow: rgba(139, 92, 246, 0.04);
 
-  /* Borders */
-  --hive-border: rgba(255,255,255,0.06);
-  --hive-border-accent: rgba(0,212,255,0.3);
+  --theme-amber: #f59e0b;
+  --theme-amber-dim: rgba(245, 158, 11, 0.08);
+  --theme-amber-glow: rgba(245, 158, 11, 0.04);
 
-  /* Glow */
-  --hive-glow-cyan: 0 0 20px rgba(0,212,255,0.15), 0 0 60px rgba(0,212,255,0.05);
-  --hive-glow-purple: 0 0 20px rgba(124,58,237,0.15), 0 0 60px rgba(124,58,237,0.05);
+  --theme-cyan: #06b6d4;
+  --theme-cyan-dim: rgba(6, 182, 212, 0.08);
+  --theme-cyan-glow: rgba(6, 182, 212, 0.04);
 
-  /* Glass */
-  --hive-glass-bg: rgba(26,26,46,0.6);
-  --hive-glass-border: rgba(255,255,255,0.08);
+  --theme-crimson: #ef4444;
+  --theme-crimson-dim: rgba(239, 68, 68, 0.08);
+  --theme-crimson-glow: rgba(239, 68, 68, 0.04);
 
-  /* Font */
-  --background: var(--hive-bg-primary);
-  --foreground: var(--hive-text-primary);
+  /* ===== Secondary ===== */
+  --secondary: #ff6b35;
+  --secondary-dim: rgba(255, 107, 53, 0.10);
+  --purple: #7c3aed;
+  --purple-dim: rgba(124, 58, 237, 0.10);
+  --green: #2ea043;
+  --green-dim: rgba(46, 160, 67, 0.10);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg-void: var(--bg-void);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-alt: var(--bg-surface-alt);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border-primary: var(--border-primary);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-hover: var(--border-hover);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-dim: var(--accent-dim);
+  --color-secondary: var(--secondary);
+  --color-secondary-dim: var(--secondary-dim);
+  --color-purple: var(--purple);
+  --color-purple-dim: var(--purple-dim);
+  --color-green: var(--green);
+  --color-green-dim: var(--green-dim);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-error: var(--error);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-
-  /* Custom colors for Tailwind */
-  --color-hive-bg: var(--hive-bg-primary);
-  --color-hive-card: var(--hive-bg-card);
-  --color-hive-elevated: var(--hive-bg-elevated);
-  --color-hive-accent: var(--hive-accent-primary);
-  --color-hive-purple: var(--hive-accent-secondary);
-  --color-hive-success: var(--hive-accent-success);
-  --color-hive-warning: var(--hive-accent-warning);
-  --color-hive-fire: var(--hive-accent-fire);
-  --color-hive-text: var(--hive-text-primary);
-  --color-hive-text-secondary: var(--hive-text-secondary);
-  --color-hive-text-muted: var(--hive-text-muted);
-  --color-hive-border: var(--hive-border);
 }
 
-/* === BASE STYLES === */
-* {
-  box-sizing: border-box;
-}
-
+/* ===== Global Body ===== */
 body {
-  background: var(--hive-bg-primary);
-  color: var(--hive-text-primary);
-  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* === SCROLLBAR === */
+/* ===== Dot Grid Texture ===== */
+.dot-grid {
+  background-image: radial-gradient(circle, #222 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ===== Scrollbar ===== */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
+  height: 5px;
 }
+
 ::-webkit-scrollbar-track {
-  background: var(--hive-bg-primary);
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: var(--hive-bg-card);
+  background: var(--border-primary);
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--hive-accent-primary);
+  background: var(--bg-elevated);
 }
 
-/* === GLASS CARD === */
-.glass-card {
-  background: var(--hive-glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--hive-glass-border);
-  border-radius: 16px;
+/* ===== Card ===== */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
 }
 
-/* === NEON GLOW === */
-.glow-cyan {
-  box-shadow: var(--hive-glow-cyan);
-}
-.glow-purple {
-  box-shadow: var(--hive-glow-purple);
+.card-alt {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-primary);
+  border-radius: 12px;
 }
 
-/* === GRADIENT TEXT === */
-.gradient-text {
-  background: var(--hive-gradient-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* ===== Input ===== */
+.input-field {
+  background: var(--bg-surface-alt);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* === PULSE ANIMATION === */
-@keyframes pulse-glow {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
+.input-field::placeholder {
+  color: var(--text-faint);
 }
 
-/* === STREAK HEATMAP CELL === */
-.heatmap-cell {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  transition: all 0.2s ease;
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
-.heatmap-cell:hover {
-  transform: scale(1.5);
+
+/* ===== Buttons ===== */
+.btn-primary {
+  background: var(--accent);
+  color: #050505;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 20px var(--accent-dim);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.btn-secondary:hover {
+  opacity: 0.9;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-dim);
+}
+
+/* ===== Online Dot ===== */
+@keyframes online-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(46, 160, 67, 0);
+  }
+}
+
+.online-dot {
+  animation: online-pulse 2s ease-in-out infinite;
+}
+
+/* ===== Badge ===== */
+.badge-live {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* ===== Tab ===== */
+.tab-active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+.tab-inactive {
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.tab-inactive:hover {
+  color: var(--text-secondary);
+}
+
+/* ===== Hex Badge ===== */
+.hex-badge {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+/* ===== Theme Atmosphere ===== */
+.theme-glow {
+  position: relative;
+}
+
+.theme-glow::before {
+  content: '';
+  position: fixed;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 600px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(120px);
+  opacity: 0.7;
+  transition: background 0.6s ease;
+}
+
+.theme-glow[data-theme="emerald"]::before {
+  background: var(--theme-emerald-glow);
+}
+
+.theme-glow[data-theme="violet"]::before {
+  background: var(--theme-violet-glow);
+}
+
+.theme-glow[data-theme="amber"]::before {
+  background: var(--theme-amber-glow);
+}
+
+.theme-glow[data-theme="cyan"]::before {
+  background: var(--theme-cyan-glow);
+}
+
+.theme-glow[data-theme="crimson"]::before {
+  background: var(--theme-crimson-glow);
+}
+
+/* ===== Terminal Reflection ===== */
+.terminal-reflect {
+  -webkit-box-reflect: below 2px linear-gradient(transparent 85%, rgba(255, 255, 255, 0.03));
+}
+
+/* ===== Selection ===== */
+::selection {
+  background: rgba(78, 205, 196, 0.25);
+  color: #fff;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }

@@ -1,285 +1,168 @@
 "use client";
 
-import { motion } from "framer-motion";
-import {
-    Zap,
-    Home,
-    Trophy,
-    MessageSquare,
-    Users,
-    User,
-    Flame,
-    GitBranch,
-    Star,
-    MapPin,
-    Calendar,
-    ExternalLink,
-    Code2,
-    Target,
-    Award,
-    TrendingUp,
-} from "lucide-react";
-import Link from "next/link";
+import { useState } from "react";
+import { MapPin, Link2, Edit, Users as UsersIcon, Flame } from "lucide-react";
+import { users } from "@/lib/data";
+import Heatmap from "@/components/Heatmap";
+import RadarChart from "@/components/RadarChart";
+import PageWrapper from "@/components/PageWrapper";
 
-/* === MOCK DATA === */
-const profile = {
-    username: "codewizard42",
-    headline: "Full Stack Engineer @ Vercel",
-    bio: "Building at the edge. Systems obsessed. Open source contributor. I ship fast and break nothing.",
-    location: "San Francisco, CA",
-    joined: "Jan 2024",
-    github: "codewizard42",
-    streak: 47,
-    longestStreak: 128,
-    xp: 12400,
-    elo: 1842,
-    followers: 1234,
-    following: 567,
-    posts: 89,
-    challengesSolved: 342,
-};
-
-const skills = [
-    { name: "TypeScript", level: 92 },
-    { name: "React/Next.js", level: 88 },
-    { name: "System Design", level: 76 },
-    { name: "Go", level: 65 },
-    { name: "PostgreSQL", level: 70 },
-    { name: "DevOps", level: 58 },
-];
-
-const badges = [
-    { icon: <Flame className="w-5 h-5" />, title: "100-Day Streak", color: "var(--hive-accent-fire)" },
-    { icon: <Star className="w-5 h-5" />, title: "OSS Contributor", color: "var(--hive-accent-warning)" },
-    { icon: <Code2 className="w-5 h-5" />, title: "Code Reviewer", color: "var(--hive-accent-primary)" },
-    { icon: <Trophy className="w-5 h-5" />, title: "Arena Champion", color: "var(--hive-accent-secondary)" },
-    { icon: <Target className="w-5 h-5" />, title: "Bug Hunter", color: "var(--hive-accent-danger)" },
-];
-
-const recentActivity = [
-    { type: "commit", text: "Pushed 3 commits to edge-cache-layer", time: "2h ago" },
-    { type: "solve", text: "Solved 'Binary Tree Max Path Sum' (Hard)", time: "5h ago" },
-    { type: "post", text: "Shared insights on WebSocket scaling", time: "1d ago" },
-    { type: "badge", text: "Earned 'Night Owl' badge", time: "2d ago" },
-];
-
-/* === HEATMAP === */
-function ContributionHeatmap() {
-    const weeks = 20;
-    const days = 7;
-    const cells = Array.from({ length: weeks * days }, () => Math.random());
-
-    return (
-        <div className="flex gap-[3px] flex-wrap" style={{ maxWidth: `${weeks * 15}px` }}>
-            {cells.map((val, i) => {
-                let bg = "rgba(255,255,255,0.03)";
-                if (val > 0.2) bg = "rgba(0,212,255,0.15)";
-                if (val > 0.4) bg = "rgba(0,212,255,0.3)";
-                if (val > 0.6) bg = "rgba(0,212,255,0.5)";
-                if (val > 0.8) bg = "rgba(0,212,255,0.8)";
-                return <div key={i} className="heatmap-cell" style={{ background: bg }} />;
-            })}
-        </div>
+export default function ProfilePage() {
+    const user = users[0];
+    const [yearContributions] = useState(() =>
+        Array.from({ length: 365 }, () =>
+            Math.random() > 0.3 ? Math.floor(Math.random() * 12) : 0
+        )
     );
-}
+    const activeCount = yearContributions.filter((v) => v > 0).length;
 
-/* === SIDEBAR === */
-function Sidebar() {
-    const navItems = [
-        { icon: <Home className="w-5 h-5" />, label: "Feed", href: "/feed", active: false },
-        { icon: <Trophy className="w-5 h-5" />, label: "Arena", href: "/arena", active: false },
-        { icon: <MessageSquare className="w-5 h-5" />, label: "Forum", href: "/forum", active: false },
-        { icon: <Users className="w-5 h-5" />, label: "Squads", href: "/squads", active: false },
-        { icon: <User className="w-5 h-5" />, label: "Profile", href: "/profile", active: true },
+    const languages = [
+        { name: "Rust", pct: 45, color: "#dea584" },
+        { name: "TypeScript", pct: 30, color: "#3178c6" },
+        { name: "Python", pct: 15, color: "#3572A5" },
+        { name: "Go", pct: 10, color: "#00ADD8" },
+    ];
+
+    const pinnedProjects = [
+        { name: "DL_PyTorch", desc: "Deep Learning using PyTorch", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
+        { name: "Machine-Learning", desc: "", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
+        { name: "NLP-and-Speech", desc: "Code for various NLP and Speech Task", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
+        { name: "Reinforcement-Learning", desc: "", lang: "Jupyter Notebook", langColor: "#DA5B0B" },
+        { name: "flag_count", desc: "", lang: "Python", langColor: "#3572A5" },
     ];
 
     return (
-        <aside className="fixed left-0 top-0 h-full w-64 p-6 hidden lg:flex flex-col" style={{ borderRight: "1px solid var(--hive-border)", background: "var(--hive-bg-secondary)" }}>
-            <Link href="/" className="flex items-center gap-2 mb-10">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--hive-gradient-primary)" }}>
-                    <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold gradient-text">HIVE</span>
-            </Link>
-            <nav className="flex-1 space-y-1">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.label}
-                        href={item.href}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-                        style={{
-                            background: item.active ? "rgba(0,212,255,0.1)" : "transparent",
-                            color: item.active ? "var(--hive-accent-primary)" : "var(--hive-text-secondary)",
-                        }}
-                    >
-                        {item.icon}
-                        {item.label}
-                    </Link>
-                ))}
-            </nav>
-        </aside>
-    );
-}
-
-/* === MAIN === */
-export default function ProfilePage() {
-    return (
-        <div className="min-h-screen" style={{ background: "var(--hive-bg-primary)" }}>
-            <Sidebar />
-            <main className="lg:ml-64 min-h-screen p-6">
-                <div className="max-w-4xl mx-auto space-y-6">
-
-                    {/* Profile Header */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="glass-card p-8"
-                    >
-                        <div className="flex flex-col md:flex-row gap-6">
-                            {/* Avatar */}
-                            <div
-                                className="w-24 h-24 rounded-2xl flex items-center justify-center text-3xl font-bold shrink-0"
-                                style={{ background: "var(--hive-gradient-primary)", color: "white" }}
-                            >
-                                {profile.username[0].toUpperCase()}
+        <PageWrapper theme="crimson">
+            <div className="max-w-full mx-auto px-6 py-6">
+                <div className="flex gap-10">
+                    {/* Left — Avatar & Info */}
+                    <div className="w-72 shrink-0">
+                        <div className="sticky top-20">
+                            <div className="relative mb-4">
+                                <img
+                                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.username}`}
+                                    alt={user.username}
+                                    className="w-48 h-48 rounded-full border-4 border-border-primary mx-auto"
+                                />
+                                <div className="absolute bottom-2 right-12 w-4 h-4 rounded-full bg-success border-2 border-bg-void online-dot" />
                             </div>
 
-                            <div className="flex-1">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <h1 className="text-2xl font-bold">{profile.username}</h1>
-                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "rgba(0,212,255,0.1)", color: "var(--hive-accent-primary)" }}>
-                                        <Flame className="w-3 h-3" /> {profile.streak} day streak
-                                    </div>
-                                </div>
-                                <p className="text-sm mt-1" style={{ color: "var(--hive-text-secondary)" }}>{profile.headline}</p>
-                                <p className="text-sm mt-2" style={{ color: "var(--hive-text-secondary)" }}>{profile.bio}</p>
-                                <div className="flex items-center gap-4 mt-3 flex-wrap">
-                                    <span className="flex items-center gap-1 text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                        <MapPin className="w-3 h-3" /> {profile.location}
-                                    </span>
-                                    <span className="flex items-center gap-1 text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                        <Calendar className="w-3 h-3" /> Joined {profile.joined}
-                                    </span>
-                                    <a href={`https://github.com/${profile.github}`} className="flex items-center gap-1 text-xs" style={{ color: "var(--hive-accent-primary)" }}>
-                                        <GitBranch className="w-3 h-3" /> {profile.github} <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                </div>
+                            <h1 className="text-xl font-bold text-text-primary uppercase tracking-tight">{user.name}</h1>
+                            <p className="text-sm text-text-muted font-mono mb-1">{user.username}</p>
+                            <p className="text-xs text-text-muted leading-relaxed mb-4">{user.bio}</p>
 
-                                {/* Social Stats */}
-                                <div className="flex items-center gap-6 mt-4">
-                                    <span className="text-sm"><strong>{profile.followers}</strong> <span style={{ color: "var(--hive-text-muted)" }}>followers</span></span>
-                                    <span className="text-sm"><strong>{profile.following}</strong> <span style={{ color: "var(--hive-text-muted)" }}>following</span></span>
-                                    <span className="text-sm"><strong>{profile.posts}</strong> <span style={{ color: "var(--hive-text-muted)" }}>posts</span></span>
-                                </div>
+                            <button className="btn-outline w-full flex items-center justify-center gap-2 mb-4 py-2">
+                                <Edit size={13} /> Edit Profile
+                            </button>
+
+                            <div className="flex items-center gap-3 mb-3">
+                                <UsersIcon size={13} className="text-text-faint" />
+                                <span className="text-xs text-text-secondary"><strong>43</strong> followers</span>
+                                <span className="text-xs text-text-faint">·</span>
+                                <span className="text-xs text-text-secondary"><strong>12</strong> following</span>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs text-text-muted">
+                                <div className="flex items-center gap-2"><MapPin size={12} className="text-text-faint" /> Addis Ababa, Ethiopia</div>
+                                <div className="flex items-center gap-2"><Link2 size={12} className="text-text-faint" /> <a href="#" className="text-accent hover:underline">haileb.com</a></div>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
-                    <div className="grid md:grid-cols-3 gap-6">
-                        {/* Left Column */}
-                        <div className="md:col-span-2 space-y-6">
-                            {/* Contribution Heatmap */}
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-6">
-                                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4" style={{ color: "var(--hive-accent-primary)" }} /> Activity Heatmap
-                                </h3>
-                                <ContributionHeatmap />
-                                <div className="flex items-center justify-between mt-3">
-                                    <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Longest streak: {profile.longestStreak} days</span>
-                                    <div className="flex items-center gap-1 text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                        Less
-                                        {[0.1, 0.3, 0.5, 0.7, 0.9].map((v) => (
-                                            <div key={v} className="w-3 h-3 rounded-sm" style={{ background: `rgba(0,212,255,${v})` }} />
-                                        ))}
-                                        More
+                    {/* Right — Content */}
+                    <div className="flex-1 min-w-0">
+                        {/* Heatmap */}
+                        <div className="card p-5 mb-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm text-text-secondary">{activeCount} contributions in the last year</h3>
+                                <button className="text-[10px] text-text-faint hover:text-accent transition-colors">Contribution settings ↗</button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <Heatmap contributions={yearContributions} cellSize={11} gap={2} />
+                            </div>
+                            <div className="flex items-center gap-2 mt-3 justify-end">
+                                <span className="text-[9px] text-text-faint">Less</span>
+                                {[0.08, 0.2, 0.4, 0.65, 0.9].map((o, i) => (
+                                    <div key={`hm-${i}`} className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: `rgba(46, 160, 67, ${o})` }} />
+                                ))}
+                                <span className="text-[9px] text-text-faint">More</span>
+                            </div>
+                        </div>
+
+                        {/* Pinned Projects */}
+                        <div className="mb-6">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-text-secondary">Pinned Projects</h3>
+                                <button className="text-[10px] text-text-faint hover:text-accent transition-colors">Customize your pins</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                {pinnedProjects.map((p, i) => (
+                                    <div key={`pin-${i}`} className="card p-4 hover:border-border-hover transition-colors cursor-pointer">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <h4 className="text-sm font-semibold text-accent">{p.name}</h4>
+                                            <span className="text-text-faint text-lg">📋</span>
+                                        </div>
+                                        {p.desc && <p className="text-xs text-text-faint mb-2">{p.desc}</p>}
+                                        <div className="flex items-center gap-1.5 mt-auto">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.langColor }} />
+                                            <span className="text-[10px] text-text-muted">{p.lang}</span>
+                                        </div>
                                     </div>
-                                </div>
-                            </motion.div>
+                                ))}
+                            </div>
+                        </div>
 
-                            {/* Skills Radar */}
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-6">
-                                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                    <Award className="w-4 h-4" style={{ color: "var(--hive-accent-secondary)" }} /> Skill Matrix
-                                </h3>
+                        {/* Bottom Row */}
+                        <div className="grid grid-cols-3 gap-4">
+                            {/* Radar */}
+                            <div className="card p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider">Performance Radar</h4>
+                                    <button className="text-[10px] text-accent hover:underline">View Details</button>
+                                </div>
+                                <div className="flex justify-center">
+                                    <RadarChart data={user.techStack} size={140} />
+                                </div>
+                                <p className="text-[10px] text-text-faint text-center mt-2">
+                                    Performing better than <strong className="text-text-secondary">94%</strong> of Backend Engineers.
+                                </p>
+                            </div>
+
+                            {/* Languages */}
+                            <div className="card p-4">
+                                <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-4">Top Languages</h4>
                                 <div className="space-y-3">
-                                    {skills.map((s) => (
-                                        <div key={s.name}>
+                                    {languages.map((lang) => (
+                                        <div key={`lang-${lang.name}`}>
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs font-medium">{s.name}</span>
-                                                <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>{s.level}%</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: lang.color }} />
+                                                    <span className="text-xs text-text-secondary">{lang.name}</span>
+                                                </div>
+                                                <span className="text-[10px] text-text-faint font-mono">{lang.pct}%</span>
                                             </div>
-                                            <div className="h-2 rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
-                                                <motion.div
-                                                    className="h-full rounded-full"
-                                                    style={{ background: "var(--hive-gradient-primary)" }}
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${s.level}%` }}
-                                                    transition={{ duration: 1, delay: 0.3 }}
-                                                />
+                                            <div className="h-1.5 bg-bg-surface-alt rounded-full overflow-hidden">
+                                                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${lang.pct}%`, backgroundColor: lang.color }} />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </motion.div>
-                        </div>
+                            </div>
 
-                        {/* Right Column */}
-                        <div className="space-y-6">
-                            {/* Stats */}
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5">
-                                <h3 className="text-sm font-semibold mb-4">Quick Stats</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>ELO Rating</span>
-                                        <span className="text-sm font-bold" style={{ color: "var(--hive-accent-warning)" }}>{profile.elo}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Total XP</span>
-                                        <span className="text-sm font-bold gradient-text">{(profile.xp / 1000).toFixed(1)}K</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Challenges</span>
-                                        <span className="text-sm font-bold" style={{ color: "var(--hive-accent-success)" }}>{profile.challengesSolved}</span>
-                                    </div>
+                            {/* Streak */}
+                            <div className="card p-4 flex flex-col items-center justify-center text-center relative">
+                                <div className="absolute top-3 right-3 text-text-faint">
+                                    <Flame size={14} />
                                 </div>
-                            </motion.div>
-
-                            {/* Badges */}
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="glass-card p-5">
-                                <h3 className="text-sm font-semibold mb-4">Badges</h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {badges.map((b) => (
-                                        <div
-                                            key={b.title}
-                                            className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
-                                            style={{ background: `color-mix(in srgb, ${b.color} 15%, transparent)`, color: b.color }}
-                                            title={b.title}
-                                        >
-                                            {b.icon}
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
-
-                            {/* Recent Activity */}
-                            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="glass-card p-5">
-                                <h3 className="text-sm font-semibold mb-4">Recent Activity</h3>
-                                <div className="space-y-3">
-                                    {recentActivity.map((a, i) => (
-                                        <div key={i} className="flex items-start gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: "var(--hive-accent-primary)" }} />
-                                            <div>
-                                                <span className="text-xs" style={{ color: "var(--hive-text-secondary)" }}>{a.text}</span>
-                                                <span className="text-xs ml-2" style={{ color: "var(--hive-text-muted)" }}>{a.time}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </motion.div>
+                                <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2">Current Streak</h4>
+                                <div className="text-3xl font-bold text-accent">{user.stats.currentStreak}</div>
+                                <div className="text-sm font-medium text-text-secondary">Days</div>
+                                <p className="text-[10px] text-text-faint mt-2">About 6 out of 8 days to 50.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </PageWrapper>
     );
 }

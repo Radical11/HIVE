@@ -1,23 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/Navbar";
 
-const inter = Inter({
+const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "HIVE — The Command Center for Your Career",
-  description:
-    "The definitive social arena for developers. Track your coding streaks, share your engineering journey, and connect with serious builders.",
-  keywords: ["developer", "social", "coding", "engineering", "community"],
+  title: "Hive — The Professional Engineering Network",
+  description: "A meritocratic network where code, consistency, and problem-solving are the only currencies.",
 };
 
 export default function RootLayout({
@@ -28,9 +26,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-bg-void text-text-primary dot-grid`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <Navbar />
+        <main className="pt-14 min-h-screen">
+          {children}
+        </main>
       </body>
     </html>
   );

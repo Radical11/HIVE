@@ -1,532 +1,300 @@
 "use client";
 
-import { motion } from "framer-motion";
-import {
-    Zap,
-    Home,
-    Trophy,
-    MessageSquare,
-    Users,
-    User,
-    Bell,
-    Search,
-    Plus,
-    Heart,
-    Flame,
-    Bug,
-    MessageCircle,
-    GitCommit,
-    Code2,
-    Target,
-    TrendingUp,
-    Settings,
-    LogIn,
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { Heart, MessageCircle, Rocket, GitCommit, CheckCircle, Flame, Star, ArrowUpRight, Share2, TrendingUp, Bookmark } from "lucide-react";
+import { feedItems, trendingRepos, users } from "@/lib/data";
+import PageWrapper from "@/components/PageWrapper";
 
-/* === MOCK DATA === */
-/* === MOCK DATA FOR TRENDING ONLY === */
-const trendingTopics = [
-    { tag: "#rust-rewrite", posts: 342 },
-    { tag: "#ai-agents", posts: 891 },
-    { tag: "#system-design", posts: 567 },
-    { tag: "#bug-bounty", posts: 234 },
-];
-
-const typeIcons: Record<string, React.ReactNode> = {
-    GITHUB_COMMIT: <GitCommit className="w-4 h-4" />,
-    CODEFORCES_SOLVE: <Code2 className="w-4 h-4" />,
-    MILESTONE: <Target className="w-4 h-4" />,
-    MANUAL: <Zap className="w-4 h-4" />,
-};
-
-const typeColors: Record<string, string> = {
-    GITHUB_COMMIT: "var(--hive-accent-success)",
-    CODEFORCES_SOLVE: "var(--hive-accent-warning)",
-    MILESTONE: "var(--hive-accent-primary)",
-    MANUAL: "var(--hive-accent-secondary)",
-};
-
-const typeLabels: Record<string, string> = {
-    GITHUB_COMMIT: "Commit",
-    CODEFORCES_SOLVE: "CF Solved",
-    MILESTONE: "Milestone",
-    MANUAL: "Post",
-};
-import { apiGet, apiPost } from "@/lib/api";
-import { useEffect, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-
-/* === SIDEBAR NAV === */
-function Sidebar() {
-    const { user, loading } = useAuth();
-
-    const navItems = [
-        { icon: <Home className="w-5 h-5" />, label: "Feed", href: "/feed", active: true },
-        { icon: <Trophy className="w-5 h-5" />, label: "Arena", href: "/arena", active: false },
-        { icon: <MessageSquare className="w-5 h-5" />, label: "Forum", href: "/forum", active: false },
-        { icon: <Users className="w-5 h-5" />, label: "Squads", href: "/squads", active: false },
-        { icon: <User className="w-5 h-5" />, label: "Profile", href: "/profile", active: false },
-    ];
-
-    const displayName = user?.displayName || user?.email?.split("@")[0] || "Anonymous";
-    const avatarLetter = displayName[0]?.toUpperCase() || "?";
-
-    return (
-        <aside className="fixed left-0 top-0 h-full w-64 p-6 hidden lg:flex flex-col" style={{ borderRight: "1px solid var(--hive-border)", background: "var(--hive-bg-secondary)" }}>
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 mb-10">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "var(--hive-gradient-primary)" }}>
-                    <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold gradient-text">HIVE</span>
-            </Link>
-
-            {/* Nav */}
-            <nav className="flex-1 space-y-1">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.label}
-                        href={item.href}
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-                        style={{
-                            background: item.active ? "rgba(0,212,255,0.1)" : "transparent",
-                            color: item.active ? "var(--hive-accent-primary)" : "var(--hive-text-secondary)",
-                        }}
-                    >
-                        {item.icon}
-                        {item.label}
-                    </Link>
-                ))}
-            </nav>
-
-            {/* User Card */}
-            {loading ? (
-                <div className="glass-card p-4 animate-pulse">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full" style={{ background: "var(--hive-bg-elevated)" }} />
-                        <div className="space-y-2 flex-1">
-                            <div className="h-3 rounded" style={{ background: "var(--hive-bg-elevated)", width: "60%" }} />
-                            <div className="h-2 rounded" style={{ background: "var(--hive-bg-elevated)", width: "40%" }} />
-                        </div>
-                    </div>
-                </div>
-            ) : user ? (
-                <div className="glass-card p-4">
-                    <div className="flex items-center gap-3">
-                        {user.photoURL ? (
-                            <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
-                        ) : (
-                            <div
-                                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                                style={{ background: "var(--hive-gradient-primary)", color: "white" }}
-                            >
-                                {avatarLetter}
-                            </div>
-                        )}
-                        <div>
-                            <div className="text-sm font-medium">{displayName}</div>
-                            <div className="text-xs flex items-center gap-1" style={{ color: "var(--hive-accent-primary)" }}>
-                                <Flame className="w-3 h-3" /> Active
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <Link href="/login" className="glass-card p-4 flex items-center gap-3 hover:scale-[1.02] transition-transform">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(0,212,255,0.1)", color: "var(--hive-accent-primary)" }}>
-                        <LogIn className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <div className="text-sm font-medium" style={{ color: "var(--hive-accent-primary)" }}>Sign In</div>
-                        <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Start your journey</div>
-                    </div>
-                </Link>
-            )}
-        </aside>
-    );
-}
-
-interface Post {
-    id: string;
-    author: {
-        username: string;
-        profile: {
-            headline: string;
-            avatar_url: string;
-        };
-    };
-    content: string;
-    code_snippet?: string;
-    type: string;
-    created_at: string;
-    reaction_counts: {
-        RESPECT?: number;
-        FIRE?: number;
-        BUG?: number;
-    };
-    comment_count: number;
-}
-
-/* === MAIN === */
 export default function FeedPage() {
-    const { user } = useAuth();
-    const displayName = user?.displayName || user?.email?.split("@")[0] || "Builder";
-    const avatarLetter = displayName[0]?.toUpperCase() || "?";
+    const [activeTab, setActiveTab] = useState("Global");
+    const user = users[0];
+    const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+    const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
 
-    const [posts, setPosts] = useState<Post[]>([]);
-    const [loadingPosts, setLoadingPosts] = useState(true);
-    const [newPostContent, setNewPostContent] = useState("");
-    const [currentUserDetails, setCurrentUserDetails] = useState<{ is_github_connected: boolean } | null>(null);
-
-    // Fetch posts
-    const fetchPosts = async () => {
-        try {
-            setLoadingPosts(true);
-            const data: any = await apiGet<any>("/api/feed/");
-
-            if (Array.isArray(data)) {
-                setPosts(data);
-            } else if (data && Array.isArray(data.results)) {
-                setPosts(data.results);
-            } else {
-                console.error("Unexpected feed data format:", data);
-                setPosts([]);
-            }
-        } catch (err) {
-            console.error("Failed to fetch posts:", err);
-            setPosts([]);
-        } finally {
-            setLoadingPosts(false);
-        }
-    };
-
+    const [issueNums, setIssueNums] = useState<Record<string, number>>({});
     useEffect(() => {
-        if (user) {
-            fetchPosts();
-            apiGet("/api/users/me/").then(data => setCurrentUserDetails(data)).catch(console.error);
-        }
-    }, [user]);
+        const nums: Record<string, number> = {};
+        feedItems.forEach((item) => { nums[item.id] = Math.floor(Math.random() * 500) + 1; });
+        setIssueNums(nums);
+    }, []);
 
-    const handleCreatePost = async () => {
-        if (!newPostContent.trim()) return;
-        try {
-            const newPost = await apiPost<Post>("/api/feed/", {
-                content: newPostContent,
-                type: "MANUAL"
-            });
-            setPosts([newPost, ...posts]);
-            setNewPostContent("");
-        } catch (err) {
-            console.error("Failed to post:", err);
+    const toggleLike = (id: string) => setLikedPosts((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
+
+    const toggleSave = (id: string) => setSavedPosts((prev) => {
+        const next = new Set(prev);
+        next.has(id) ? next.delete(id) : next.add(id);
+        return next;
+    });
+
+    const getIcon = (type: string) => {
+        switch (type) {
+            case "github": return <GitCommit size={16} className="text-accent" />;
+            case "leetcode": return <CheckCircle size={16} className="text-accent" />;
+            case "deploy": return <Rocket size={16} className="text-accent" />;
+            case "streak": return <Flame size={16} className="text-secondary" />;
+            default: return null;
         }
     };
 
     return (
-        <div className="min-h-screen" style={{ background: "var(--hive-bg-primary)" }}>
-            <Sidebar />
-
-            {/* Main Content */}
-            <main className="lg:ml-64 min-h-screen">
-                {/* Top Bar */}
-                <header className="sticky top-0 z-40 px-6 py-4 flex items-center justify-between glass-card" style={{ borderRadius: 0, borderTop: "none", borderLeft: "none", borderRight: "none" }}>
-                    <div className="flex items-center gap-3 flex-1 max-w-md">
-                        <Search className="w-4 h-4" style={{ color: "var(--hive-text-muted)" }} />
-                        <input
-                            type="text"
-                            placeholder="Search engineers, topics, challenges..."
-                            className="flex-1 bg-transparent outline-none text-sm"
-                            style={{ color: "var(--hive-text-primary)" }}
-                        />
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button className="relative p-2 rounded-lg transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-1 right-1 w-2 h-2 rounded-full" style={{ background: "var(--hive-accent-danger)" }} />
-                        </button>
-                        <button className="p-2 rounded-lg" style={{ color: "var(--hive-text-secondary)" }}>
-                            <Settings className="w-5 h-5" />
-                        </button>
-                    </div>
-                </header>
-
-                <div className="flex gap-6 p-6">
-                    {/* Feed Column */}
-                    <div className="flex-1 max-w-2xl space-y-6">
-
-                        {/* Connect GitHub Banner */}
-                        {currentUserDetails && !currentUserDetails.is_github_connected && (
-                            <div className="glass-card p-5 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <div className="space-y-1">
-                                        <h3 className="font-semibold text-lg flex items-center gap-2">
-                                            <GitCommit className="w-5 h-5 text-purple-400" />
-                                            Connect GitHub
-                                        </h3>
-                                        <p className="text-sm text-gray-400 max-w-sm">
-                                            Link your repositories to automatically post your commits and milestones to the feed.
-                                        </p>
-                                    </div>
-                                    <a
-                                        href="https://github.com/apps/hiveeeee/installations/new"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-5 py-2.5 rounded-xl font-bold text-white transition-all transform hover:scale-105 shadow-lg shadow-purple-500/20"
-                                        style={{ background: "var(--hive-gradient-primary)" }}
-                                    >
-                                        Connect Now
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Compose */}
-                        <div className="glass-card p-5">
-                            <div className="flex items-center gap-3 mb-4">
-                                {user?.photoURL ? (
-                                    <img src={user.photoURL} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
-                                ) : (
-                                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "var(--hive-gradient-primary)", color: "white" }}>
-                                        {avatarLetter}
-                                    </div>
-                                )}
-                                <input
-                                    type="text"
-                                    value={newPostContent}
-                                    onChange={(e) => setNewPostContent(e.target.value)}
-                                    placeholder="Share a win, post a snippet, or drop some knowledge..."
-                                    className="flex-1 bg-transparent outline-none text-sm"
-                                    style={{ color: "var(--hive-text-primary)" }}
+        <PageWrapper theme="emerald">
+            <div className="w-full px-8 py-6">
+                <div className="flex gap-6">
+                    {/* Left Sidebar — Mini Profile */}
+                    <div className="w-[280px] shrink-0 hidden lg:block">
+                        <div className="card p-6 sticky top-20">
+                            <div className="text-center mb-5">
+                                <img
+                                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.username}`}
+                                    alt={user.username}
+                                    className="w-20 h-20 rounded-full border-2 border-border-primary mx-auto mb-3"
                                 />
+                                <h3 className="text-base font-semibold text-text-primary">{user.name}</h3>
+                                <p className="text-sm text-text-muted">{user.role}</p>
                             </div>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "var(--hive-text-secondary)" }}>
-                                        <Code2 className="w-3.5 h-3.5" /> Code
-                                    </button>
-                                    <button className="px-3 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" style={{ background: "rgba(255,255,255,0.05)", color: "var(--hive-text-secondary)" }}>
-                                        <Target className="w-3.5 h-3.5" /> Milestone
-                                    </button>
+                            <div className="space-y-3 border-t border-border-primary pt-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-text-faint">Streak</span>
+                                    <span className="text-sm font-bold text-accent">{user.stats.currentStreak}d 🔥</span>
                                 </div>
-                                <button
-                                    onClick={handleCreatePost}
-                                    className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5"
-                                    style={{ background: "var(--hive-gradient-primary)" }}
-                                >
-                                    <Plus className="w-3.5 h-3.5" /> Post
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Posts */}
-                        {loadingPosts ? (
-                            <div className="text-center py-10 opacity-50">Loading your feed...</div>
-                        ) : posts.length === 0 ? (
-                            <div className="text-center py-10 opacity-50">No posts yet. Start the conversation!</div>
-                        ) : (
-                            // Generating feed items
-                            posts.map((post, i) => (
-                                post.type === "GITHUB_COMMIT" ? (
-                                    <motion.div
-                                        key={post.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05, duration: 0.4 }}
-                                        className="p-6 rounded-2xl mb-6 relative overflow-hidden"
-                                        style={{
-                                            background: "#08090C", // Darker background for code feel
-                                            border: "1px solid rgba(255,255,255,0.08)"
-                                        }}
-                                    >
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                {post.author.profile?.avatar_url ? (
-                                                    <img src={post.author.profile.avatar_url} className="w-10 h-10 rounded-full object-cover" />
-                                                ) : (
-                                                    <div
-                                                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                                                        style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
-                                                    >
-                                                        {post.author.username[0].toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-sm font-bold text-white">{post.author.username}</span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-400">
-                                                        {post.author.profile?.headline || "Developer"} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Commit Badge */}
-                                            <div className="px-3 py-1.5 rounded-full flex items-center gap-2 border"
-                                                style={{
-                                                    background: "rgba(16, 185, 129, 0.1)",
-                                                    borderColor: "rgba(16, 185, 129, 0.2)",
-                                                    color: "#34D399"
-                                                }}>
-                                                <GitCommit className="w-3.5 h-3.5" />
-                                                <span className="text-xs font-semibold">Commit</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Description */}
-                                        <div className="text-sm text-gray-200 mb-4 leading-relaxed font-medium">
-                                            {post.content}
-                                        </div>
-
-                                        {/* Code Snippet Box */}
-                                        {post.code_snippet && (
-                                            <div className="rounded-xl overflow-hidden mb-4 font-mono text-xs" style={{ background: "#0D1117", border: "1px solid #30363D" }}>
-                                                <div className="p-4 overflow-x-auto">
-                                                    <pre className="text-gray-300">
-                                                        {post.code_snippet}
-                                                    </pre>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Footer Actions */}
-                                        <div className="flex items-center gap-6 pt-2">
-                                            <button className="flex items-center gap-2 text-gray-500 hover:text-pink-500 transition-colors">
-                                                <Heart className="w-4 h-4" />
-                                                <span className="text-xs font-medium">{post.reaction_counts?.RESPECT || 0}</span>
-                                            </button>
-                                            <button className="flex items-center gap-2 text-gray-500 hover:text-orange-500 transition-colors">
-                                                <Flame className="w-4 h-4" />
-                                                <span className="text-xs font-medium">{post.reaction_counts?.FIRE || 0}</span>
-                                            </button>
-                                            <button className="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-colors">
-                                                <MessageCircle className="w-4 h-4" />
-                                                <span className="text-xs font-medium">{post.comment_count || 0}</span>
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ) : (
-                                    /* Standard Post Type */
-                                    <motion.div
-                                        key={post.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: i * 0.05, duration: 0.4 }}
-                                        className="glass-card p-6"
-                                    >
-                                        {/* Post Header */}
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-3">
-                                                {post.author.profile?.avatar_url ? (
-                                                    <img src={post.author.profile.avatar_url} className="w-10 h-10 rounded-full object-cover" />
-                                                ) : (
-                                                    <div
-                                                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                                                        style={{ background: "var(--hive-bg-elevated)", color: "var(--hive-text-primary)" }}
-                                                    >
-                                                        {post.author.username[0].toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <div className="text-sm font-semibold">{post.author.username}</div>
-                                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>
-                                                        {post.author.profile?.headline || "Developer"} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div
-                                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                                                style={{
-                                                    background: `color-mix(in srgb, ${typeColors[post.type] || 'gray'} 15%, transparent)`,
-                                                    color: typeColors[post.type] || 'gray',
-                                                }}
-                                            >
-                                                {typeIcons[post.type]}
-                                                {typeLabels[post.type] || post.type}
-                                            </div>
-                                        </div>
-
-                                        {/* Content */}
-                                        <p className="text-sm leading-relaxed mb-4 whitespace-pre-wrap" style={{ color: "var(--hive-text-primary)" }}>
-                                            {post.content}
-                                        </p>
-
-                                        {/* Code Snippet */}
-                                        {post.code_snippet && (
-                                            <pre
-                                                className="text-xs p-4 rounded-xl mb-4 overflow-x-auto font-mono"
-                                                style={{
-                                                    background: "var(--hive-bg-primary)",
-                                                    border: "1px solid var(--hive-border)",
-                                                    color: "var(--hive-accent-primary)",
-                                                }}
-                                            >
-                                                {post.code_snippet}
-                                            </pre>
-                                        )}
-
-                                        {/* Reactions */}
-                                        <div className="flex items-center justify-between pt-3" style={{ borderTop: "1px solid var(--hive-border)" }}>
-                                            <div className="flex items-center gap-4">
-                                                <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                                    <Heart className="w-4 h-4" /> {post.reaction_counts?.RESPECT || 0}
-                                                </button>
-                                                <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                                    <Flame className="w-4 h-4" /> {post.reaction_counts?.FIRE || 0}
-                                                </button>
-                                                <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: "var(--hive-text-secondary)" }}>
-                                                    <Bug className="w-4 h-4" /> {post.reaction_counts?.BUG || 0}
-                                                </button>
-                                            </div>
-                                            <button className="flex items-center gap-1.5 text-xs" style={{ color: "var(--hive-text-secondary)" }}>
-                                                <MessageCircle className="w-4 h-4" /> {post.comment_count || 0}
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                )
-                            )))}
-                    </div>
-
-                    {/* Right Sidebar */}
-                    <aside className="hidden xl:block w-80 space-y-6">
-                        {/* Stats Card */}
-                        <div className="glass-card p-5">
-                            <h3 className="text-sm font-semibold mb-4">Your Stats</h3>
-                            <div className="grid grid-cols-3 gap-3 text-center">
-                                <div>
-                                    <div className="text-lg font-bold gradient-text">47</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>Streak</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-text-faint">Commits</span>
+                                    <span className="text-sm font-mono text-text-secondary">{user.stats.totalCommits.toLocaleString()}</span>
                                 </div>
-                                <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-warning)" }}>1842</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>ELO</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-text-faint">Reputation</span>
+                                    <span className="text-sm font-mono text-text-secondary">{user.stats.reputation.toLocaleString()}</span>
                                 </div>
-                                <div>
-                                    <div className="text-lg font-bold" style={{ color: "var(--hive-accent-success)" }}>12.4K</div>
-                                    <div className="text-xs" style={{ color: "var(--hive-text-muted)" }}>XP</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-text-faint">Problems</span>
+                                    <span className="text-sm font-mono text-text-secondary">{user.stats.problemsSolved}</span>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Trending */}
-                        <div className="glass-card p-5">
-                            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4" style={{ color: "var(--hive-accent-primary)" }} />
-                                Trending Topics
-                            </h3>
-                            <div className="space-y-3">
-                                {trendingTopics.map((t) => (
-                                    <div key={t.tag} className="flex items-center justify-between">
-                                        <span className="text-sm font-medium" style={{ color: "var(--hive-accent-primary)" }}>{t.tag}</span>
-                                        <span className="text-xs" style={{ color: "var(--hive-text-muted)" }}>{t.posts} posts</span>
-                                    </div>
+                            <div className="mt-4 pt-4 border-t border-border-primary">
+                                <h4 className="text-xs font-bold text-text-faint uppercase tracking-wider mb-2">Top Repos</h4>
+                                {user.githubData.topRepos.map((repo) => (
+                                    <div key={repo} className="text-sm text-accent hover:underline cursor-pointer py-1 active:opacity-70">{repo}</div>
                                 ))}
                             </div>
                         </div>
-                    </aside>
+                    </div>
+
+                    {/* Center — Feed (fills available space) */}
+                    <div className="flex-1 min-w-0">
+                        {/* Tabs */}
+                        <div className="flex gap-8 border-b border-border-primary mb-6">
+                            {["Global", "Following", "Trending"].map((tab) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`pb-3.5 text-sm font-semibold transition-colors ${activeTab === tab ? "tab-active" : "tab-inactive"
+                                        }`}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Post Composer */}
+                        <div className="card p-5 mb-6">
+                            <div className="flex items-start gap-4">
+                                <img
+                                    src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.username}`}
+                                    alt="you"
+                                    className="w-11 h-11 rounded-full border border-border-primary"
+                                />
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="Share what you're building..."
+                                        className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-faint outline-none py-2"
+                                    />
+                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-subtle">
+                                        <div className="flex gap-3">
+                                            <button className="text-sm text-text-faint hover:text-accent transition-colors active:scale-95">📎 Attach</button>
+                                            <button className="text-sm text-text-faint hover:text-accent transition-colors active:scale-95">💻 Code</button>
+                                            <button className="text-sm text-text-faint hover:text-accent transition-colors active:scale-95">📊 Poll</button>
+                                        </div>
+                                        <button className="btn-primary text-sm py-2 px-6 active:scale-95">POST</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Feed Items */}
+                        <div className="space-y-5">
+                            {feedItems.map((item) => {
+                                const isLiked = likedPosts.has(item.id);
+                                const isSaved = savedPosts.has(item.id);
+                                return (
+                                    <div key={item.id} className="card p-6 hover:border-border-hover transition-colors group">
+                                        {/* Header */}
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <img
+                                                src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${item.username}`}
+                                                alt={item.username}
+                                                className="w-11 h-11 rounded-full border border-border-primary cursor-pointer hover:border-accent transition-colors"
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-semibold text-text-primary hover:text-accent cursor-pointer transition-colors">@{item.username}</span>
+                                                    {getIcon(item.type)}
+                                                    <span className="ml-auto text-text-faint text-sm">{item.timestamp}</span>
+                                                </div>
+                                                <span className="text-xs text-text-faint capitalize">{item.type}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Title */}
+                                        <h3 className="text-base font-semibold text-text-primary mb-2 cursor-pointer hover:text-accent transition-colors">
+                                            {item.title}
+                                            {issueNums[item.id] && (
+                                                <span className="text-text-faint font-mono text-sm ml-2">#{issueNums[item.id]}</span>
+                                            )}
+                                        </h3>
+
+                                        {/* Code Block */}
+                                        {item.type === "github" && (
+                                            <div className="bg-bg-void rounded-lg border border-border-subtle p-4 mb-4">
+                                                <div className="flex gap-1.5 mb-2.5">
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]/60" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]/60" />
+                                                    <div className="w-2.5 h-2.5 rounded-full bg-[#27C93F]/60" />
+                                                </div>
+                                                <code className="text-sm text-text-muted font-mono leading-relaxed">{item.description}</code>
+                                            </div>
+                                        )}
+
+                                        {/* LeetCode Stats */}
+                                        {item.type === "leetcode" && item.stats && (
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${item.difficulty === "Hard" ? "bg-error/10 text-error" : item.difficulty === "Medium" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
+                                                    }`}>
+                                                    {item.difficulty}
+                                                </span>
+                                                <span className="text-xs text-text-faint font-mono">{item.stats.time} · {item.stats.memory} · {item.stats.language}</span>
+                                            </div>
+                                        )}
+
+                                        {item.type !== "github" && item.type !== "leetcode" && (
+                                            <p className="text-sm text-text-muted mb-4">{item.description}</p>
+                                        )}
+
+                                        {/* Reactions */}
+                                        <div className="flex items-center gap-5 pt-3 border-t border-border-subtle">
+                                            <button
+                                                onClick={() => toggleLike(item.id)}
+                                                className={`flex items-center gap-2 transition-colors active:scale-95 ${isLiked ? "text-error" : "text-text-faint hover:text-error"}`}
+                                            >
+                                                <Heart size={15} fill={isLiked ? "currentColor" : "none"} />
+                                                <span className="text-sm">{isLiked ? "Liked" : "Like"}</span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-text-faint hover:text-accent transition-colors active:scale-95">
+                                                <MessageCircle size={15} />
+                                                <span className="text-sm">Comment</span>
+                                            </button>
+                                            <button className="flex items-center gap-2 text-text-faint hover:text-accent transition-colors active:scale-95">
+                                                <Share2 size={15} />
+                                                <span className="text-sm">Share</span>
+                                            </button>
+                                            <button
+                                                onClick={() => toggleSave(item.id)}
+                                                className={`flex items-center gap-2 transition-colors active:scale-95 ${isSaved ? "text-warning" : "text-text-faint hover:text-warning"}`}
+                                            >
+                                                <Bookmark size={15} fill={isSaved ? "currentColor" : "none"} />
+                                                <span className="text-sm">{isSaved ? "Saved" : "Save"}</span>
+                                            </button>
+                                            {item.repo && (
+                                                <a href="#" className="flex items-center gap-2 text-text-faint hover:text-accent transition-colors ml-auto active:scale-95">
+                                                    <ArrowUpRight size={15} />
+                                                    <span className="text-sm font-mono">{item.repo}</span>
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Right Sidebar — Trending & Stats */}
+                    <div className="w-[320px] shrink-0 hidden xl:block">
+                        <div className="sticky top-20 space-y-5">
+                            {/* Trending Repos */}
+                            <div className="card p-6">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-5 flex items-center gap-2">
+                                    <TrendingUp size={14} /> Trending Repos
+                                </h3>
+                                <div className="space-y-4">
+                                    {trendingRepos.map((repo) => (
+                                        <div key={repo.name} className="group cursor-pointer hover:bg-bg-surface-alt -mx-3 px-3 py-2 rounded-lg transition-colors active:scale-[0.98]">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-medium text-text-secondary group-hover:text-accent transition-colors">{repo.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: repo.languageColor }} />
+                                                <span className="text-xs text-text-faint">{repo.language}</span>
+                                                <Star size={12} className="text-text-faint ml-auto" />
+                                                <span className="text-xs text-text-faint">{(repo.stars / 1000).toFixed(1)}k</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Quick Stats */}
+                            <div className="card p-5">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Today&apos;s Activity</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: "Commits", value: "847", icon: "💻" },
+                                        { label: "PRs Merged", value: "124", icon: "🔀" },
+                                        { label: "Deploys", value: "36", icon: "🚀" },
+                                        { label: "Online", value: "1.2k", icon: "🟢" },
+                                    ].map((stat) => (
+                                        <div key={stat.label} className="text-center p-3 bg-bg-surface-alt rounded-lg hover:border-border-hover border border-transparent transition-colors cursor-pointer active:scale-95">
+                                            <div className="text-lg mb-1">{stat.icon}</div>
+                                            <div className="text-base font-bold text-text-primary">{stat.value}</div>
+                                            <div className="text-xs text-text-faint">{stat.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* People You May Know */}
+                            <div className="card p-5">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">People You May Know</h3>
+                                <div className="space-y-3">
+                                    {users.slice(1, 5).map((u) => (
+                                        <div key={u.id} className="flex items-center gap-3 hover:bg-bg-surface-alt -mx-2 px-2 py-2 rounded-lg transition-colors cursor-pointer">
+                                            <img src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${u.username}`} alt={u.username} className="w-10 h-10 rounded-full border border-border-primary" />
+                                            <div className="flex-1 min-w-0">
+                                                <span className="text-sm font-medium text-text-secondary block">{u.name}</span>
+                                                <span className="text-xs text-text-faint">{u.role}</span>
+                                            </div>
+                                            <button className="text-xs text-accent hover:underline font-medium active:scale-95 transition-transform">Connect</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Suggested Tags */}
+                            <div className="card p-5">
+                                <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Popular Tags</h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {["#rust", "#webdev", "#ai", "#devops", "#golang", "#react", "#security", "#cloud", "#typescript", "#python"].map((tag) => (
+                                        <button key={tag} className="px-3 py-1.5 rounded-full text-xs font-mono bg-bg-surface-alt text-text-muted border border-border-subtle hover:border-accent hover:text-accent transition-colors active:scale-95">{tag}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </PageWrapper>
     );
 }
