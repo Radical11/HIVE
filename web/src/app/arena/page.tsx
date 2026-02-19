@@ -3,10 +3,53 @@
 import { useEffect, useState } from "react";
 import { Trophy, Clock, ChevronRight, Calendar, Flame, Zap } from "lucide-react";
 import { battles, leaderboard, users } from "@/lib/data";
+import { getMe, ApiUser } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import PageWrapper from "@/components/PageWrapper";
 
 export default function ArenaPage() {
-    const user = users[0];
+    const { firebaseUser, hiveUser } = useAuth();
+    const [profileUser, setProfileUser] = useState<ApiUser | null>(null);
+
+    useEffect(() => {
+        if (firebaseUser) {
+            getMe().then(setProfileUser).catch(() => null);
+        }
+    }, [firebaseUser]);
+
+    const isDemo = !profileUser && !hiveUser;
+
+    // Helpers to safely get user data whether it's ApiUser or User
+    const getAvatar = () => {
+        if (profileUser?.profile?.avatar_url) return profileUser.profile.avatar_url;
+        if (firebaseUser?.photoURL) return firebaseUser.photoURL;
+        const u = hiveUser || users[0];
+        if ('avatar' in u) return u.avatar;
+        return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${u.username}`;
+    };
+
+    const getName = () => {
+        if (profileUser) return `${profileUser.first_name} ${profileUser.last_name}`.trim() || profileUser.username;
+        const u = hiveUser || users[0];
+        if ('name' in u) return u.name;
+        return u.username;
+    };
+
+    const username = profileUser?.username || hiveUser?.username || users[0].username;
+
+    const getStat = (field: 'streak' | 'xp' | 'rank') => {
+        if (profileUser?.profile) {
+            if (field === 'streak') return profileUser.profile.current_streak;
+            if (field === 'xp') return profileUser.profile.total_xp;
+            if (field === 'rank') return 125; // Real rank not yet in API
+        }
+        if (isDemo) {
+            if (field === 'streak') return 47;
+            if (field === 'xp') return 12450;
+            if (field === 'rank') return 4291;
+        }
+        return 0;
+    };
 
     // Client-side battle timers
     const [timers, setTimers] = useState<Record<string, number>>({});
@@ -39,23 +82,29 @@ export default function ArenaPage() {
                         {/* User Stats */}
                         <div className="card p-5 text-center">
                             <img
-                                src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${user.username}`}
-                                alt={user.username}
-                                className="w-20 h-20 rounded-full border-2 border-border-primary mx-auto mb-3"
+                                src={getAvatar()}
+                                alt={username}
+                                className="w-20 h-20 rounded-full border-2 border-border-primary mx-auto mb-3 object-cover"
                             />
-                            <h3 className="text-sm font-semibold text-text-primary mb-3">{user.name}</h3>
+                            <h3 className="text-sm font-semibold text-text-primary mb-3">
+                                {getName()}
+                            </h3>
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-text-faint">Global Rank</span>
-                                    <span className="text-sm font-bold text-accent font-mono">#4,291</span>
+                                    <span className="text-sm font-bold text-accent font-mono">#{getStat('rank').toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-text-faint">Arena XP</span>
-                                    <span className="text-sm font-bold text-secondary font-mono">12,450</span>
+                                    <span className="text-sm font-bold text-secondary font-mono">
+                                        {getStat('xp').toLocaleString()}
+                                    </span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] text-text-faint">Daily Streak</span>
-                                    <span className="text-sm font-bold text-success font-mono">{user.stats.currentStreak}</span>
+                                    <span className="text-sm font-bold text-success font-mono">
+                                        {getStat('streak')}
+                                    </span>
                                 </div>
                             </div>
                         </div>

@@ -83,7 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (firebaseEmail && firebasePassword) {
             // Sign in to Firebase using the credentials created by the backend
             await signInWithEmailAndPassword(auth, firebaseEmail, firebasePassword);
-            // onAuthStateChanged will handle fetching HIVE user
+            // Force refresh of HIVE user to get the new connection status immediately
+            await fetchHiveUser();
         }
     };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Heart, MessageCircle, Rocket, GitCommit, CheckCircle, Flame, Star, ArrowUpRight, Share2, TrendingUp, Bookmark } from "lucide-react";
-import { getFeed, createPost, reactToPost, getMe, ApiPost, ApiUser } from "@/lib/api";
+import { getFeed, createPost, reactToPost, getMe, getGitHubEvents, ApiPost, ApiUser, GitHubEvent } from "@/lib/api";
 import { feedItems as mockFeedItems, trendingRepos, users as mockUsers } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import PageWrapper from "@/components/PageWrapper";
@@ -17,6 +17,7 @@ export default function FeedPage() {
 
     // Real API posts
     const [apiPosts, setApiPosts] = useState<ApiPost[]>([]);
+    const [ghEvents, setGhEvents] = useState<GitHubEvent[]>([]);
     const [apiLoading, setApiLoading] = useState(true);
     const [apiError, setApiError] = useState<string | null>(null);
 
@@ -33,9 +34,16 @@ export default function FeedPage() {
             Promise.all([
                 getFeed().catch(() => null),
                 getMe().catch(() => null),
-            ]).then(([feedData, userData]) => {
+            ]).then(async ([feedData, userData]) => {
                 if (feedData?.results) setApiPosts(feedData.results);
-                if (userData) setCurrentUser(userData);
+                if (userData) {
+                    setCurrentUser(userData);
+                    if (userData.profile?.github_handle) {
+                        getGitHubEvents(userData.profile.github_handle)
+                            .then(setGhEvents)
+                            .catch(() => []);
+                    }
+                }
                 setApiLoading(false);
             }).catch(() => {
                 setApiError("Failed to load feed");
@@ -429,9 +437,21 @@ export default function FeedPage() {
                                 <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider mb-4">Today&apos;s Activity</h3>
                                 <div className="grid grid-cols-2 gap-3">
                                     {[
-                                        { label: "Commits", value: "847", icon: "💻" },
-                                        { label: "PRs Merged", value: "124", icon: "🔀" },
-                                        { label: "Deploys", value: "36", icon: "🚀" },
+                                        {
+                                            label: "Commits",
+                                            value: isAuthenticated ? (apiLoading ? "-" : apiPosts.filter(p => p.type === 'GITHUB_COMMIT' && new Date(p.created_at).toDateString() === new Date().toDateString()).length.toString()) : "847",
+                                            icon: "💻"
+                                        },
+                                        {
+                                            label: "PRs Merged",
+                                            value: isAuthenticated ? (apiLoading ? "-" : apiPosts.filter(p => p.type === 'GITHUB_PR' && new Date(p.created_at).toDateString() === new Date().toDateString()).length.toString()) : "124",
+                                            icon: "🔀"
+                                        },
+                                        {
+                                            label: "Deploys",
+                                            value: isAuthenticated ? "2" : "36",
+                                            icon: "🚀"
+                                        }, // Mocking deploys for now as API doesn't fully support it yet
                                         { label: "Online", value: "1.2k", icon: "🟢" },
                                     ].map((stat) => (
                                         <div key={stat.label} className="text-center p-3 bg-bg-surface-alt rounded-lg hover:border-border-hover border border-transparent transition-colors cursor-pointer active:scale-95">

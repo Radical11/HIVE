@@ -179,9 +179,34 @@ export async function getGitHubProfile(handle: string): Promise<GitHubProfile> {
     return data;
 }
 
-export async function getGitHubRepos(handle: string): Promise<GitHubRepo[]> {
+export async function getGitHubRepos(handle: string, sort: "updated" | "stars" = "updated"): Promise<GitHubRepo[]> {
     const { data } = await axios.get(
-        `https://api.github.com/users/${handle}/repos?sort=updated&per_page=6`
+        `https://api.github.com/users/${handle}/repos?sort=${sort}&per_page=6`
+    );
+    return data;
+}
+
+export interface GitHubEvent {
+    id: string;
+    type: string;
+    actor: {
+        id: number;
+        login: string;
+        avatar_url: string;
+    };
+    repo: {
+        id: number;
+        name: string;
+        url: string;
+    };
+    payload: any;
+    public: boolean;
+    created_at: string;
+}
+
+export async function getGitHubEvents(handle: string): Promise<GitHubEvent[]> {
+    const { data } = await axios.get(
+        `https://api.github.com/users/${handle}/events/public?per_page=10`
     );
     return data;
 }
