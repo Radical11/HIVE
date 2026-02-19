@@ -7,17 +7,26 @@ from users.models import User, UserProfile
 # Initialize Firebase Admin SDK (uses default credentials or service account)
 import os
 
-# Initialize Firebase Admin SDK (uses default credentials or service account)
+# Initialize Firebase Admin SDK
 if not firebase_admin._apps:
     try:
-        # 1. Check for explicit service account in env (production/staging)
-        if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+        # 1. Check for service account JSON file in the backend directory
+        _base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        _sa_path = os.path.join(_base_dir, 'firebase-service-account.json')
+
+        if os.path.exists(_sa_path):
+            cred = credentials.Certificate(_sa_path)
+            firebase_admin.initialize_app(cred, {'projectId': 'hive-ecee0'})
+            print(f"Firebase Admin initialized with Service Account from {_sa_path}")
+        elif os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+            # 2. Check for explicit service account in env (production/staging)
             cred = credentials.ApplicationDefault()
             firebase_admin.initialize_app(cred, {'projectId': 'hive-ecee0'})
+            print("Firebase Admin initialized with GOOGLE_APPLICATION_CREDENTIALS")
         else:
-            # 2. Local dev fallback: Use a mock credential to bypass ADC search.
-            # This allows the app to initialize so verify_id_token can work (it only needs public keys).
-            # We import here to avoid dependency issues if google-auth not installed (though it should be)
+            # 3. Local dev fallback: Use a mock credential to bypass ADC search.
+            # WARNING: create_custom_token() will NOT work with mock credentials.
+            # Only verify_id_token works (it only needs public keys).
             from google.auth import credentials as google_credentials
             
             class MockProjectCredential(google_credentials.Credentials):
@@ -30,7 +39,9 @@ if not firebase_admin._apps:
 
             cred = MockProjectCredential()
             firebase_admin.initialize_app(cred, {'projectId': 'hive-ecee0'})
-            print("Firebase Admin initialized with Mock Credentials (Local Dev Mode)")
+            print("WARNING: Firebase Admin initialized with Mock Credentials.")
+            print("  -> create_custom_token() (GitHub login) WILL FAIL.")
+            print("  -> Place firebase-service-account.json in the backend/ directory to fix.")
             
     except Exception as e:
         # Fallback for any initialization error
@@ -38,8 +49,9 @@ if not firebase_admin._apps:
         try:
             if not firebase_admin._apps:
                 firebase_admin.initialize_app(options={'projectId': 'hive-ecee0'})
-        except Exception:
-            pass
+                print("Firebase Admin initialized with default options (Limited functionality)")
+        except Exception as fb_err:
+            print(f"Firebase Critical Init Failure: {fb_err}")
 
 
 class FirebaseAuthentication(authentication.BaseAuthentication):

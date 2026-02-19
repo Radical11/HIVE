@@ -6,7 +6,6 @@ import {
     signInWithPopup,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithCustomToken,
     signOut,
     User as FirebaseUser,
 } from "firebase/auth";
@@ -75,10 +74,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const handleGitHubCallback = async (code: string) => {
-        const { token } = await exchangeGitHubCode(code);
-        // Sign in to Firebase with the custom token from our backend
-        await signInWithCustomToken(auth, token);
-        // onAuthStateChanged will handle fetching HIVE user
+        const result = await exchangeGitHubCode(code);
+        const { firebaseEmail, firebasePassword } = result as {
+            firebaseEmail?: string;
+            firebasePassword?: string;
+        };
+
+        if (firebaseEmail && firebasePassword) {
+            // Sign in to Firebase using the credentials created by the backend
+            await signInWithEmailAndPassword(auth, firebaseEmail, firebasePassword);
+            // onAuthStateChanged will handle fetching HIVE user
+        }
     };
 
     const loginWithEmail = async (email: string, password: string) => {

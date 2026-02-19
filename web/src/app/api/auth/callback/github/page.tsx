@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Suspense } from "react";
@@ -10,8 +10,12 @@ function GitHubCallbackContent() {
     const router = useRouter();
     const { handleGitHubCallback } = useAuth();
     const [error, setError] = useState<string | null>(null);
+    const hasRun = useRef(false);
 
     useEffect(() => {
+        if (hasRun.current) return; // Prevent double-run in React StrictMode
+        hasRun.current = true;
+
         const code = searchParams.get("code");
         if (!code) {
             setError("No authorization code received from GitHub.");
